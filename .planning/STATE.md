@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 2 complete -- Profile Editor Core (3/3 plans done)
+**Current focus:** Phase 3 in progress -- Profile Editor Extended (1/2 plans done)
 
 ## Current Position
 
-Phase: 2 of 9 (Profile Editor Core)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-10 -- Completed 02-03-PLAN.md (Undo/redo, grid, snap, dimensions)
+Phase: 3 of 9 (Profile Editor Extended)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-10 -- Completed 03-01-PLAN.md (Parametric presets + mode switching)
 
-Progress: [██████░░░░░░░░░░░░░░░░░░░] 25% (6/24 plans)
+Progress: [███████░░░░░░░░░░░░░░░░░░] 29% (7/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
+- Total plans completed: 7
 - Average duration: ~4 minutes
-- Total execution time: ~25 minutes
+- Total execution time: ~29 minutes
 
 **By Phase:**
 
@@ -29,9 +29,10 @@ Progress: [██████░░░░░░░░░░░░░░░░░
 |-------|-------|-------|----------|
 | 1. WASM Foundation | 3/3 | ~12m | ~4m |
 | 2. Profile Editor Core | 3/3 | ~13m | ~4m |
+| 3. Profile Editor Extended | 1/2 | ~4m | ~4m |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (~4m), 02-01 (~5m), 02-02 (~3m), 02-03 (~5m)
+- Last 5 plans: 02-01 (~5m), 02-02 (~3m), 02-03 (~5m), 03-01 (~4m)
 - Trend: Stable at ~4m/plan
 
 *Updated after each plan completion*
@@ -73,6 +74,10 @@ Recent decisions affecting current work:
 - [02-03]: Named 'dimensions' group in overlay layer to coexist with constraint markers
 - [02-03]: Proportional scaling for dimension input (preserves shape character)
 - [02-03]: Belly diameter read-only (scaling ambiguous -- user drags points directly)
+- [03-01]: All presets generate 6 profile points for consistency
+- [03-01]: App starts in parametric mode with cup preset (not freehand with test profile)
+- [03-01]: parametricPresets.js is pure math -- zero DOM/Paper.js dependencies
+- [03-01]: No-op Paper.js tool for clean tool deactivation in parametric mode
 
 ### Pending Todos
 
@@ -81,6 +86,7 @@ Recent decisions affecting current work:
 - Browser validation of constraint overlay rendering and status indicator appearance.
 - Browser validation of undo/redo keyboard shortcuts (Cmd vs Ctrl detection).
 - Browser validation of dimension overlay positioning and grid adaptive spacing.
+- Browser validation of parametric preset slider interaction and mode switching.
 
 ### Blockers/Concerns
 
@@ -92,5 +98,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 02-03-PLAN.md (Phase 2 complete)
+Stopped at: Completed 03-01-PLAN.md (Parametric presets + mode switching)
 Resume file: None
