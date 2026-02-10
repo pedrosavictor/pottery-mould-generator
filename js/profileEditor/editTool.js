@@ -28,8 +28,13 @@
  * triggers the 3D preview update.
  */
 
+import { enforceAxisBound, validateConstraints, clearViolations, renderViolations } from './constraints.js';
+
 /** Hit test tolerance in pixels. */
 const HIT_TOLERANCE = 10;
+
+/** Run visual validation feedback every N drag events (throttle). */
+const VALIDATION_THROTTLE = 3;
 
 /**
  * Create the edit tool for the profile editor.
@@ -49,6 +54,9 @@ export function createEditTool(editorState) {
 
   /** Whether a drag actually happened (vs. just a click). */
   let didDrag = false;
+
+  /** Counter for throttling validation during drag. */
+  let dragCount = 0;
 
   // ------------------------------------------------------------------
   // Mouse events
@@ -121,6 +129,7 @@ export function createEditTool(editorState) {
   tool.onMouseDrag = function (event) {
     if (!dragSegment || !dragType) return;
     didDrag = true;
+    dragCount++;
 
     const delta = event.delta;
 
@@ -136,19 +145,41 @@ export function createEditTool(editorState) {
       dragSegment.handleOut = dragSegment.handleOut.add(delta);
     }
 
+    // Enforce axis boundary constraint (clamp to x >= 0)
+    enforceAxisBound(dragSegment, editorState.transform);
+
     // Live update handles overlay
     editorState.requestRender();
+
+    // Throttled visual validation feedback during drag
+    if (dragCount % VALIDATION_THROTTLE === 0 && editorState.path) {
+      clearViolations(editorState.layers.overlay);
+      const result = validateConstraints(editorState.path, editorState.transform);
+      if (!result.valid) {
+        renderViolations(result.violations, editorState.layers.overlay, editorState.transform);
+      }
+    }
   };
 
   tool.onMouseUp = function (event) {
     if (didDrag && dragSegment) {
       // Editing is done -- sync path back to profile data and update 3D preview
       editorState.notifyChange();
+
+      // Full validation on mouse up (not throttled)
+      if (editorState.path) {
+        clearViolations(editorState.layers.overlay);
+        const result = validateConstraints(editorState.path, editorState.transform);
+        if (!result.valid) {
+          renderViolations(result.violations, editorState.layers.overlay, editorState.transform);
+        }
+      }
     }
 
     dragType = null;
     dragSegment = null;
     didDrag = false;
+    dragCount = 0;
   };
 
   // ------------------------------------------------------------------

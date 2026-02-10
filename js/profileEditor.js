@@ -37,6 +37,7 @@ import { initCanvas, createTransform } from './profileEditor/canvasSetup.js';
 import { renderProfile, renderHandles, syncPathToProfile } from './profileEditor/pathRenderer.js';
 import { createEditTool } from './profileEditor/editTool.js';
 import { createDrawTool } from './profileEditor/drawTool.js';
+import { validateConstraints, clearViolations, renderViolations } from './profileEditor/constraints.js';
 
 /**
  * Initialize the profile editor on the given canvas element.
@@ -96,10 +97,20 @@ export function initProfileEditor(canvasId, options = {}) {
     /**
      * Sync the Paper.js path back to profile data and fire onChange.
      * Called after any edit that changes the profile shape.
+     * Also runs constraint validation and updates the status indicator.
      */
     notifyChange() {
       if (!path) return;
       currentProfilePoints = syncPathToProfile(path, transform);
+
+      // Run constraint validation and update visual feedback
+      clearViolations(layers.overlay);
+      const result = validateConstraints(path, transform);
+      if (!result.valid) {
+        renderViolations(result.violations, layers.overlay, transform);
+      }
+      updateConstraintStatus(result);
+
       if (onChange) {
         onChange(currentProfilePoints);
       }
@@ -174,6 +185,14 @@ export function initProfileEditor(canvasId, options = {}) {
       path = renderProfile(currentProfilePoints, transform, layers.profile);
       editorState.selectedSegmentIndex = -1;
       renderHandles(path, layers.handles);
+
+      // Validate the new profile
+      clearViolations(layers.overlay);
+      const result = validateConstraints(path, transform);
+      if (!result.valid) {
+        renderViolations(result.violations, layers.overlay, transform);
+      }
+      updateConstraintStatus(result);
     },
   };
 }
@@ -245,4 +264,33 @@ function setActiveButton(activeBtn) {
   const buttons = toolbar.querySelectorAll('.tool-btn');
   buttons.forEach(btn => btn.classList.remove('active'));
   activeBtn.classList.add('active');
+}
+
+/**
+ * Update the constraint status indicator in the DOM.
+ *
+ * Shows a green "Profile OK" when valid, or a red summary of violation
+ * types when the profile has constraint violations.
+ *
+ * @param {{ valid: boolean, violations: Array<{ type: string }> }} result
+ */
+function updateConstraintStatus(result) {
+  const el = document.getElementById('constraint-status');
+  if (!el) return;
+
+  if (result.valid) {
+    el.className = 'constraint-status valid';
+    el.textContent = 'Profile OK';
+  } else {
+    el.className = 'constraint-status invalid';
+
+    // Summarize violation types
+    const types = new Set(result.violations.map(v => v.type));
+    const labels = [];
+    if (types.has('axisCrossing')) labels.push('Axis crossing');
+    if (types.has('undercut')) labels.push('Undercut');
+    if (types.has('selfIntersection')) labels.push('Self-intersection');
+
+    el.textContent = labels.join(' | ');
+  }
 }
