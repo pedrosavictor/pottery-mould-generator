@@ -5,32 +5,32 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 1 - WASM Foundation
+**Current focus:** Phase 2 - Profile Editor Core (Phase 1 complete)
 
 ## Current Position
 
-Phase: 1 of 9 (WASM Foundation)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-10 -- Completed 01-02-PLAN.md (Geometry bridge + memory management)
+Phase: 1 of 9 (WASM Foundation) -- COMPLETE
+Plan: 3 of 3 in current phase (all plans complete)
+Status: Phase complete
+Last activity: 2026-02-10 -- Completed 01-03-PLAN.md (Three.js preview + end-to-end pipeline)
 
-Progress: [██░░░░░░░░░░░░░░░░░░░░░░░] 8% (2/24 plans)
+Progress: [███░░░░░░░░░░░░░░░░░░░░░░] 12% (3/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
+- Total plans completed: 3
 - Average duration: ~4 minutes
-- Total execution time: ~8 minutes
+- Total execution time: ~12 minutes
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. WASM Foundation | 2/3 | ~8m | ~4m |
+| 1. WASM Foundation | 3/3 | ~12m | ~4m |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (~5m), 01-02 (~3m)
+- Last 5 plans: 01-01 (~5m), 01-02 (~3m), 01-03 (~4m)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -52,19 +52,23 @@ Recent decisions affecting current work:
 - [01-02]: Generation counter cancellation (latest-wins) instead of AbortController for WASM ops
 - [01-02]: withCleanup((track) => { ... }) pattern for guaranteed WASM memory cleanup
 - [01-02]: Profile validation rejects x === 0 mid-profile to prevent self-intersecting solids
+- [01-03]: Import map in HTML for Three.js (not workers); workers use direct CDN URLs
+- [01-03]: Camera at (0, 80, 250) targeting (0, 42, 0) for cup-scale viewing
+- [01-03]: Terra cotta MeshStandardMaterial with DoubleSide for normal direction safety
+- [01-03]: Auto-revolve test profile on WASM init complete (validates pipeline every load)
 
 ### Pending Todos
 
-- CRITICAL: Run spike/wasm-spike.html in a browser to validate 5 open questions before proceeding to 01-03
+- Browser validation of WASM CDN loading still pending (deferred from headless CI). First browser test should confirm: replicad ESM loads, WASM binary loads, mesh renders, memory test passes.
 
 ### Blockers/Concerns
 
-- [Phase 1]: WASM CDN loading pattern is coded but NOT YET VALIDATED in a browser. Spike must be run before 01-03.
+- [Phase 1 -> Phase 2]: WASM CDN loading is coded but NOT YET VALIDATED in a browser. Spike should be run before deep Phase 2 work to catch any CDN loading issues early.
 - [Phase 1]: If replicad.js has internal bare specifier imports, CDN loading will fail. Fallback: esm.sh, self-hosted bundle, or Vite worker build.
 - [Phase 6]: Ridge/groove dimensions and clearance values need physical test prints to validate -- cannot be determined from research alone
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 01-02-PLAN.md
+Stopped at: Completed 01-03-PLAN.md (Phase 1 complete)
 Resume file: None
