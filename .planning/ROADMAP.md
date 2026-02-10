@@ -13,7 +13,7 @@ This roadmap takes the Pottery Mould Generator from zero to a complete browser-b
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: WASM Foundation** - OpenCASCADE.js in Web Worker with memory management and basic revolution
-- [ ] **Phase 2: Profile Editor Core** - Bezier curve editor with constraints and undo/redo
+- [x] **Phase 2: Profile Editor Core** - Bezier curve editor with constraints and undo/redo
 - [ ] **Phase 3: Profile Editor Extended** - Parametric presets, SVG import, reference image overlay
 - [ ] **Phase 4: Live 3D Preview** - Three.js visualization connected to profile editing
 - [ ] **Phase 5: Inner Mould Generation** - Shrinkage scaling, wall thickness, slip well, proof model
@@ -67,11 +67,11 @@ Plans:
   2. User can switch between parametric mode and freehand bezier mode, with the current profile carrying over
   3. User can upload an SVG file and have it parsed into an editable profile in the editor
   4. User can upload a reference photo, adjust its opacity, and trace the pot outline over it
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Parametric presets with slider-driven profile generation
-- [ ] 03-02: SVG import parser and reference image overlay
+- [ ] 03-01-PLAN.md -- Parametric presets with slider-driven profile generation and mode switching
+- [ ] 03-02-PLAN.md -- SVG import parser and reference image overlay
 
 ### Phase 4: Live 3D Preview
 **Goal**: Users see their pot and mould take shape in 3D as they edit the profile -- the preview updates within a fraction of a second of any change, providing the instant feedback that is the app's core differentiator over ShapeCast.
@@ -181,7 +181,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. WASM Foundation | 3/3 | Complete | 2026-02-10 |
-| 2. Profile Editor Core | 0/3 | Planned | - |
+| 2. Profile Editor Core | 3/3 | Complete | 2026-02-10 |
 | 3. Profile Editor Extended | 0/2 | Not started | - |
 | 4. Live 3D Preview | 0/3 | Not started | - |
 | 5. Inner Mould Generation | 0/2 | Not started | - |
