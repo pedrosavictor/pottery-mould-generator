@@ -111,6 +111,46 @@ main {
   border-color: var(--terra-cotta-dark);
 }
 
+#editor-toolbar .tool-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#editor-toolbar .tool-btn:disabled:hover {
+  background-color: transparent;
+}
+
+/* ---- Toolbar Divider ---- */
+
+.toolbar-divider {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background-color: var(--border);
+  align-self: center;
+}
+
+/* ---- Snap Toggle ---- */
+
+.snap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  color: var(--dark);
+  cursor: pointer;
+  user-select: none;
+}
+
+.snap-toggle input[type="checkbox"] {
+  accent-color: var(--terra-cotta);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
 /* ---- Constraint Status Indicator ---- */
 
 .constraint-status {

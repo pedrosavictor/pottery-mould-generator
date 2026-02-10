@@ -38,6 +38,8 @@ import { renderProfile, renderHandles, syncPathToProfile } from './profileEditor
 import { createEditTool } from './profileEditor/editTool.js';
 import { createDrawTool } from './profileEditor/drawTool.js';
 import { validateConstraints, clearViolations, renderViolations } from './profileEditor/constraints.js';
+import { createUndoManager } from './profileEditor/undoManager.js';
+import { renderGrid } from './profileEditor/gridOverlay.js';
 
 /**
  * Initialize the profile editor on the given canvas element.
@@ -62,10 +64,22 @@ export function initProfileEditor(canvasId, options = {}) {
   // --- 2. Create coordinate transform ---
   let transform = createTransform(view.size.width, view.size.height);
 
-  // --- 3. Draw mm grid ---
-  drawGrid(transform, layers.grid);
+  // --- 3. Draw adaptive grid ---
+  renderGrid(layers.grid, transform, view.size.width, view.size.height);
 
-  // --- 4. Render initial profile (if provided) ---
+  // --- 4. Undo/redo manager ---
+  const undoMgr = createUndoManager(100);
+
+  /**
+   * Internal flag: when true, setProfileData will NOT push to undo stack.
+   * Used during undo/redo restore to avoid double-recording the state.
+   */
+  let suppressUndoPush = false;
+
+  /** Whether snap-to-grid is enabled. */
+  let snapEnabled = false;
+
+  // --- 5. Render initial profile (if provided) ---
   let currentProfilePoints = initialProfile ? [...initialProfile.points] : [];
   let path = null;
 
@@ -74,7 +88,12 @@ export function initProfileEditor(canvasId, options = {}) {
     renderHandles(path, layers.handles);
   }
 
-  // --- 5. Editor state (shared across tools) ---
+  // Push initial state to undo stack
+  if (currentProfilePoints.length >= 2) {
+    undoMgr.push(currentProfilePoints);
+  }
+
+  // --- 6. Editor state (shared across tools) ---
   const editorState = {
     get path() { return path; },
     set path(p) { path = p; },
@@ -83,6 +102,9 @@ export function initProfileEditor(canvasId, options = {}) {
     project,
     view,
     selectedSegmentIndex: -1,
+
+    /** Whether snap-to-grid is active. Read by tools. */
+    get snapEnabled() { return snapEnabled; },
 
     /**
      * Redraw the handle overlay (anchors, control points, lines).
@@ -97,11 +119,18 @@ export function initProfileEditor(canvasId, options = {}) {
     /**
      * Sync the Paper.js path back to profile data and fire onChange.
      * Called after any edit that changes the profile shape.
-     * Also runs constraint validation and updates the status indicator.
+     * Also runs constraint validation, pushes to undo stack, and
+     * updates the status indicator.
      */
     notifyChange() {
       if (!path) return;
       currentProfilePoints = syncPathToProfile(path, transform);
+
+      // Push to undo stack (unless restoring from undo/redo)
+      if (!suppressUndoPush) {
+        undoMgr.push(currentProfilePoints);
+      }
+      updateUndoRedoButtons();
 
       // Run constraint validation and update visual feedback
       clearViolations(layers.overlay);
@@ -117,16 +146,19 @@ export function initProfileEditor(canvasId, options = {}) {
     },
   };
 
-  // --- 6. Create tools ---
+  // --- 7. Create tools ---
   const editTool = createEditTool(editorState);
   const drawTool = createDrawTool(editorState);
 
   // Default to edit tool
   editTool.activate();
 
-  // --- 7. Wire toolbar buttons ---
+  // --- 8. Wire toolbar buttons ---
   const btnEdit = document.getElementById('btn-edit-tool');
   const btnDraw = document.getElementById('btn-draw-tool');
+  const btnUndo = document.getElementById('btn-undo');
+  const btnRedo = document.getElementById('btn-redo');
+  const chkSnap = document.getElementById('chk-snap');
 
   if (btnEdit) {
     btnEdit.addEventListener('click', () => {
@@ -142,13 +174,118 @@ export function initProfileEditor(canvasId, options = {}) {
     });
   }
 
-  // --- 8. Handle canvas resize ---
+  // --- Undo/Redo button handlers ---
+  if (btnUndo) {
+    btnUndo.addEventListener('click', () => performUndo());
+  }
+
+  if (btnRedo) {
+    btnRedo.addEventListener('click', () => performRedo());
+  }
+
+  // --- Snap checkbox ---
+  if (chkSnap) {
+    chkSnap.addEventListener('change', () => {
+      snapEnabled = chkSnap.checked;
+    });
+  }
+
+  // --- Keyboard shortcuts for undo/redo ---
+  document.addEventListener('keydown', (e) => {
+    const isMeta = e.metaKey || e.ctrlKey;
+    if (!isMeta) return;
+
+    // Cmd+Z / Ctrl+Z = undo
+    if (e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      performUndo();
+      return;
+    }
+
+    // Cmd+Shift+Z = redo (Mac style)
+    if (e.key === 'z' && e.shiftKey) {
+      e.preventDefault();
+      performRedo();
+      return;
+    }
+
+    // Ctrl+Y = redo (Windows style)
+    if (e.key === 'y') {
+      e.preventDefault();
+      performRedo();
+      return;
+    }
+  });
+
+  /**
+   * Perform an undo operation.
+   * Restores the previous profile state from the undo stack.
+   */
+  function performUndo() {
+    const prevPoints = undoMgr.undo();
+    if (!prevPoints) return;
+
+    suppressUndoPush = true;
+    restoreProfile(prevPoints);
+    suppressUndoPush = false;
+    updateUndoRedoButtons();
+  }
+
+  /**
+   * Perform a redo operation.
+   * Restores the next profile state from the redo stack.
+   */
+  function performRedo() {
+    const nextPoints = undoMgr.redo();
+    if (!nextPoints) return;
+
+    suppressUndoPush = true;
+    restoreProfile(nextPoints);
+    suppressUndoPush = false;
+    updateUndoRedoButtons();
+  }
+
+  /**
+   * Restore a profile from a points array.
+   * Re-renders everything and fires onChange.
+   */
+  function restoreProfile(points) {
+    currentProfilePoints = [...points];
+    path = renderProfile(currentProfilePoints, transform, layers.profile);
+    editorState.selectedSegmentIndex = -1;
+    renderHandles(path, layers.handles);
+
+    // Validate
+    clearViolations(layers.overlay);
+    const result = validateConstraints(path, transform);
+    if (!result.valid) {
+      renderViolations(result.violations, layers.overlay, transform);
+    }
+    updateConstraintStatus(result);
+
+    if (onChange) {
+      onChange(currentProfilePoints);
+    }
+  }
+
+  /**
+   * Update the disabled state of undo/redo buttons.
+   */
+  function updateUndoRedoButtons() {
+    if (btnUndo) btnUndo.disabled = !undoMgr.canUndo();
+    if (btnRedo) btnRedo.disabled = !undoMgr.canRedo();
+  }
+
+  // Initialize undo/redo button states
+  updateUndoRedoButtons();
+
+  // --- 9. Handle canvas resize ---
   view.onResize = function () {
     transform = createTransform(view.size.width, view.size.height);
     editorState.transform = transform;
 
     // Re-render everything with new transform
-    drawGrid(transform, layers.grid);
+    renderGrid(layers.grid, transform, view.size.width, view.size.height);
 
     if (currentProfilePoints.length >= 2) {
       path = renderProfile(currentProfilePoints, transform, layers.profile);
@@ -156,7 +293,7 @@ export function initProfileEditor(canvasId, options = {}) {
     }
   };
 
-  // --- 9. Public API ---
+  // --- 10. Public API ---
   return {
     /**
      * Get the current profile points array.
@@ -171,7 +308,8 @@ export function initProfileEditor(canvasId, options = {}) {
 
     /**
      * Replace the current profile with new data.
-     * Re-renders the path and handles.
+     * Re-renders the path and handles. Pushes to undo stack unless
+     * suppressUndoPush is true (internal undo/redo restore).
      *
      * @param {Object} profile - Profile object with .points array.
      */
@@ -185,6 +323,12 @@ export function initProfileEditor(canvasId, options = {}) {
       path = renderProfile(currentProfilePoints, transform, layers.profile);
       editorState.selectedSegmentIndex = -1;
       renderHandles(path, layers.handles);
+
+      // Push to undo stack (unless restoring from undo/redo)
+      if (!suppressUndoPush) {
+        undoMgr.push(currentProfilePoints);
+        updateUndoRedoButtons();
+      }
 
       // Validate the new profile
       clearViolations(layers.overlay);
@@ -200,58 +344,6 @@ export function initProfileEditor(canvasId, options = {}) {
 // ============================================================
 // Internal helpers
 // ============================================================
-
-/**
- * Draw a millimeter grid on the grid layer.
- * Shows major gridlines every 10mm and minor every 5mm.
- * Also draws the revolution axis (x=0 line).
- *
- * @param {{ toCanvas: function, scale: number, offsetX: number, offsetY: number }} transform
- * @param {paper.Layer} gridLayer
- */
-function drawGrid(transform, gridLayer) {
-  gridLayer.activate();
-  gridLayer.removeChildren();
-
-  const { scale, offsetX, offsetY } = transform;
-
-  // Determine visible range in mm
-  const maxX = 70;   // mm - enough for large pots
-  const maxY = 130;  // mm
-
-  // Minor grid lines (every 10mm)
-  for (let mm = 0; mm <= maxX; mm += 10) {
-    const x = offsetX + mm * scale;
-    new paper.Path.Line({
-      from: new paper.Point(x, offsetY),
-      to: new paper.Point(x, offsetY - maxY * scale),
-      strokeColor: '#e0dbd5',
-      strokeWidth: (mm % 50 === 0) ? 1 : 0.5,
-      parent: gridLayer,
-    });
-  }
-
-  for (let mm = 0; mm <= maxY; mm += 10) {
-    const y = offsetY - mm * scale;
-    new paper.Path.Line({
-      from: new paper.Point(offsetX, y),
-      to: new paper.Point(offsetX + maxX * scale, y),
-      strokeColor: '#e0dbd5',
-      strokeWidth: (mm % 50 === 0) ? 1 : 0.5,
-      parent: gridLayer,
-    });
-  }
-
-  // Revolution axis (x = 0 line) -- dashed, darker
-  new paper.Path.Line({
-    from: new paper.Point(offsetX, offsetY + 10),
-    to: new paper.Point(offsetX, offsetY - maxY * scale - 10),
-    strokeColor: '#aaa',
-    strokeWidth: 1,
-    dashArray: [6, 4],
-    parent: gridLayer,
-  });
-}
 
 /**
  * Set the active state on a toolbar button, removing it from siblings.

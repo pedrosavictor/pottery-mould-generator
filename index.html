@@ -27,6 +27,13 @@
         <div id="editor-toolbar">
           <button id="btn-edit-tool" class="tool-btn active" title="Edit points and handles">Edit</button>
           <button id="btn-draw-tool" class="tool-btn" title="Add points to profile">Draw</button>
+          <span class="toolbar-divider"></span>
+          <button id="btn-undo" class="tool-btn" title="Undo (Cmd+Z)" disabled>Undo</button>
+          <button id="btn-redo" class="tool-btn" title="Redo (Cmd+Shift+Z)" disabled>Redo</button>
+          <span class="toolbar-divider"></span>
+          <label class="snap-toggle" title="Snap to grid">
+            <input type="checkbox" id="chk-snap"> Snap
+          </label>
         </div>
         <canvas id="profile-canvas" resize></canvas>
         <div id="constraint-status" class="constraint-status valid">Profile OK</div>
