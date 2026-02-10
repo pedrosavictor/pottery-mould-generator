@@ -26,12 +26,16 @@
  * after use to prevent memory leaks. Intermediate objects (sketches, drawings)
  * are consumed by operations and do not need manual deletion.
  *
- * The withCleanup() memory management wrapper is NOT implemented here --
- * that comes in Plan 01-02. For now, shape.delete() is called directly
- * after extracting mesh data.
+ * The withCleanup() wrapper (from memoryTracker.js) guarantees that all
+ * WASM objects are .delete()'d after each operation, even if an error occurs.
+ * See memoryTracker.js for the pattern documentation.
  *
- * Cancellation logic is also deferred to Plan 01-02.
+ * Cancellation is handled by the geometry bridge (main thread) using a
+ * generation counter pattern -- stale results are discarded on receipt.
+ * The worker itself always completes its current operation.
  */
+
+import { withCleanup, getHeapSize } from './memoryTracker.js';
 
 // ============================================================
 // CDN URLs -- change to self-hosted paths if CDN fails
@@ -127,10 +131,32 @@ self.onmessage = async (e) => {
         break;
       }
 
+      case 'heapSize': {
+        // Return current WASM heap size for memory monitoring.
+        // Returns null if WASM has not been initialized yet.
+        self.postMessage({ id, data: { heapSize: getHeapSize() } });
+        break;
+      }
+
+      case 'memoryTest': {
+        // Run N revolve operations and report heap size after each.
+        // This is for Phase 1 success criteria #3: proving no memory leaks.
+        // The mesh data is intentionally NOT transferred (not needed for testing).
+        await initialize();
+        const iterations = params.iterations || 20;
+        const results = [];
+        for (let i = 0; i < iterations; i++) {
+          revolveProfile(params.profilePoints);
+          results.push({ iteration: i + 1, heapSize: getHeapSize() });
+        }
+        self.postMessage({ id, data: { results } });
+        break;
+      }
+
       default: {
         self.postMessage({
           id,
-          error: `Unknown command: "${type}". Supported commands: init, revolve`,
+          error: `Unknown command: "${type}". Supported commands: init, revolve, heapSize, memoryTest`,
         });
       }
     }
@@ -169,65 +195,67 @@ function revolveProfile(points) {
     throw new Error('Profile must have at least 2 points');
   }
 
-  // Step 1: Build 2D drawing from profile points.
-  // draw() takes the starting point as [x, y].
-  let pen = draw([points[0].x, points[0].y]);
+  return withCleanup((track) => {
+    // Step 1: Build 2D drawing from profile points.
+    // draw() takes the starting point as [x, y].
+    let pen = draw([points[0].x, points[0].y]);
 
-  for (let i = 1; i < points.length; i++) {
-    const pt = points[i];
-    if (pt.type === 'bezier' && pt.cp1 && pt.cp2) {
-      // cubicBezierCurveTo(endPoint, startControlPoint, endControlPoint)
-      // Each argument is [x, y].
-      pen = pen.cubicBezierCurveTo(
-        [pt.x, pt.y],
-        [pt.cp1.x, pt.cp1.y],
-        [pt.cp2.x, pt.cp2.y]
-      );
-    } else {
-      // Default: straight line segment
-      pen = pen.lineTo([pt.x, pt.y]);
+    for (let i = 1; i < points.length; i++) {
+      const pt = points[i];
+      if (pt.type === 'bezier' && pt.cp1 && pt.cp2) {
+        // cubicBezierCurveTo(endPoint, startControlPoint, endControlPoint)
+        // Each argument is [x, y].
+        pen = pen.cubicBezierCurveTo(
+          [pt.x, pt.y],
+          [pt.cp1.x, pt.cp1.y],
+          [pt.cp2.x, pt.cp2.y]
+        );
+      } else {
+        // Default: straight line segment
+        pen = pen.lineTo([pt.x, pt.y]);
+      }
     }
-  }
 
-  // Step 2: Close the profile back to the revolution axis.
-  // Draw from the last profile point to the axis (x=0) at the same height,
-  // then down the axis to the starting height, then close.
-  const lastPoint = points[points.length - 1];
-  const firstPoint = points[0];
+    // Step 2: Close the profile back to the revolution axis.
+    // Draw from the last profile point to the axis (x=0) at the same height,
+    // then down the axis to the starting height, then close.
+    const lastPoint = points[points.length - 1];
+    const firstPoint = points[0];
 
-  pen = pen.lineTo([0, lastPoint.y]);  // Horizontal line to axis at top
-  pen = pen.lineTo([0, firstPoint.y]); // Vertical line down the axis
+    pen = pen.lineTo([0, lastPoint.y]);  // Horizontal line to axis at top
+    pen = pen.lineTo([0, firstPoint.y]); // Vertical line down the axis
 
-  const drawing = pen.close();
+    const drawing = pen.close();
 
-  // Step 3: Place drawing on XZ plane and revolve around Z axis.
-  // sketchOnPlane("XZ") maps drawing X -> 3D X, drawing Y -> 3D Z.
-  // revolve() defaults to 360-degree revolution around the Z axis.
-  // This produces a solid of revolution symmetric around the Z axis,
-  // which is what we want for pottery (axis = center of pot).
-  const shape = drawing.sketchOnPlane('XZ').revolve();
+    // Step 3: Place drawing on XZ plane and revolve around Z axis.
+    // sketchOnPlane("XZ") maps drawing X -> 3D X, drawing Y -> 3D Z.
+    // revolve() defaults to 360-degree revolution around the Z axis.
+    // This produces a solid of revolution symmetric around the Z axis,
+    // which is what we want for pottery (axis = center of pot).
+    const shape = track(drawing.sketchOnPlane('XZ').revolve());
 
-  // Step 4: Extract mesh data for Three.js rendering.
-  // tolerance: linear deflection (mm) -- lower = more triangles, smoother
-  // angularTolerance: angular deflection (radians) -- lower = smoother curves
-  const meshData = shape.mesh({ tolerance: 0.1, angularTolerance: 0.3 });
+    // Step 4: Extract mesh data for Three.js rendering.
+    // tolerance: linear deflection (mm) -- lower = more triangles, smoother
+    // angularTolerance: angular deflection (radians) -- lower = smoother curves
+    const meshData = shape.mesh({ tolerance: 0.1, angularTolerance: 0.3 });
 
-  // Step 5: Convert mesh data to typed arrays.
-  // Based on research, shape.mesh() returns plain JS arrays (number[]).
-  // Float32Array for vertices/normals, Uint32Array for triangle indices.
-  // These typed arrays enable Transferable zero-copy postMessage transfer.
-  const vertices = new Float32Array(meshData.vertices);
-  const normals = new Float32Array(meshData.normals);
-  const triangles = new Uint32Array(meshData.triangles);
+    // Step 5: Convert mesh data to typed arrays.
+    // Based on research, shape.mesh() returns plain JS arrays (number[]).
+    // Float32Array for vertices/normals, Uint32Array for triangle indices.
+    // These typed arrays enable Transferable zero-copy postMessage transfer.
+    const vertices = new Float32Array(meshData.vertices);
+    const normals = new Float32Array(meshData.normals);
+    const triangles = new Uint32Array(meshData.triangles);
 
-  // Step 6: Free WASM memory.
-  // shape.delete() releases the OCCT BRep shape from the WASM heap.
-  // Without this call, every revolve permanently leaks memory.
-  // Intermediate objects (pen, drawing, sketch) are consumed by
-  // their downstream operations and do not need manual deletion.
-  shape.delete();
+    // Step 6: WASM memory is freed automatically by withCleanup.
+    // The track(shape) call above registered the shape for cleanup.
+    // shape.delete() will be called in the finally block of withCleanup,
+    // releasing the OCCT BRep shape from the WASM heap.
+    // Intermediate objects (pen, drawing, sketch) are consumed by
+    // their downstream operations and do not need manual deletion.
 
-  return { vertices, normals, triangles };
+    return { vertices, normals, triangles };
+  });
 }
 
 // ============================================================
