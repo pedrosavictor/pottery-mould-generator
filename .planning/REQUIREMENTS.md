@@ -129,13 +129,68 @@ Deferred to future release. Architecture must not prevent these.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (To be populated during roadmap creation) | | |
+| PROF-01 | Phase 2: Profile Editor Core | Pending |
+| PROF-02 | Phase 2: Profile Editor Core | Pending |
+| PROF-03 | Phase 3: Profile Editor Extended | Pending |
+| PROF-04 | Phase 3: Profile Editor Extended | Pending |
+| PROF-05 | Phase 2: Profile Editor Core | Pending |
+| PROF-06 | Phase 3: Profile Editor Extended | Pending |
+| PROF-07 | Phase 3: Profile Editor Extended | Pending |
+| PROF-08 | Phase 2: Profile Editor Core | Pending |
+| PROF-09 | Phase 2: Profile Editor Core | Pending |
+| PROF-10 | Phase 2: Profile Editor Core | Pending |
+| PROF-11 | Phase 2: Profile Editor Core | Pending |
+| MOULD-01 | Phase 1: WASM Foundation | Pending |
+| MOULD-02 | Phase 5: Inner Mould Generation | Pending |
+| MOULD-03 | Phase 5: Inner Mould Generation | Pending |
+| MOULD-04 | Phase 5: Inner Mould Generation | Pending |
+| MOULD-05 | Phase 6: Outer Mould, Ring, and Assembly | Pending |
+| MOULD-06 | Phase 6: Outer Mould, Ring, and Assembly | Pending |
+| MOULD-07 | Phase 6: Outer Mould, Ring, and Assembly | Pending |
+| MOULD-08 | Phase 6: Outer Mould, Ring, and Assembly | Pending |
+| MOULD-09 | Phase 6: Outer Mould, Ring, and Assembly | Pending |
+| MOULD-10 | Phase 5: Inner Mould Generation | Pending |
+| MOULD-11 | Phase 5: Inner Mould Generation | Pending |
+| MOULD-12 | Phase 6: Outer Mould, Ring, and Assembly | Pending |
+| PREV-01 | Phase 4: Live 3D Preview | Pending |
+| PREV-02 | Phase 4: Live 3D Preview | Pending |
+| PREV-03 | Phase 4: Live 3D Preview | Pending |
+| PREV-04 | Phase 4: Live 3D Preview | Pending |
+| PREV-05 | Phase 4: Live 3D Preview | Pending |
+| PREV-06 | Phase 4: Live 3D Preview | Pending |
+| EXP-01 | Phase 7: File Export and Plaster Calculator | Pending |
+| EXP-02 | Phase 7: File Export and Plaster Calculator | Pending |
+| EXP-03 | Phase 7: File Export and Plaster Calculator | Pending |
+| EXP-04 | Phase 7: File Export and Plaster Calculator | Pending |
+| EXP-05 | Phase 7: File Export and Plaster Calculator | Pending |
+| PLAST-01 | Phase 7: File Export and Plaster Calculator | Pending |
+| PLAST-02 | Phase 7: File Export and Plaster Calculator | Pending |
+| PLAST-03 | Phase 7: File Export and Plaster Calculator | Pending |
+| PLAST-04 | Phase 7: File Export and Plaster Calculator | Pending |
+| PLAST-05 | Phase 7: File Export and Plaster Calculator | Pending |
+| AUTH-01 | Phase 8: Authentication and Freemium | Pending |
+| AUTH-02 | Phase 8: Authentication and Freemium | Pending |
+| AUTH-03 | Phase 8: Authentication and Freemium | Pending |
+| AUTH-04 | Phase 8: Authentication and Freemium | Pending |
+| AUTH-05 | Phase 8: Authentication and Freemium | Pending |
+| AUTH-06 | Phase 8: Authentication and Freemium | Pending |
+| UI-01 | Phase 9: UI/UX Polish and Deployment | Pending |
+| UI-02 | Phase 9: UI/UX Polish and Deployment | Pending |
+| UI-03 | Phase 9: UI/UX Polish and Deployment | Pending |
+| UI-04 | Phase 9: UI/UX Polish and Deployment | Pending |
+| UI-05 | Phase 9: UI/UX Polish and Deployment | Pending |
+| UI-06 | Phase 8: Authentication and Freemium | Pending |
+| INFRA-01 | Phase 1: WASM Foundation | Pending |
+| INFRA-02 | Phase 1: WASM Foundation | Pending |
+| INFRA-03 | Phase 1: WASM Foundation | Pending |
+| INFRA-04 | Phase 9: UI/UX Polish and Deployment | Pending |
+| INFRA-05 | Phase 1: WASM Foundation | Pending |
 
 **Coverage:**
-- v1 requirements: 51 total
-- Mapped to phases: 0
-- Unmapped: 51
+- v1 requirements: 56 total
+- Mapped to phases: 56
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-10*
-*Last updated: 2026-02-10 after initial definition*
+*Last updated: 2026-02-10 after roadmap creation*
