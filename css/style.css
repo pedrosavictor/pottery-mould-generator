@@ -1,7 +1,7 @@
 /* ============================================================
- * Pottery Mould Generator -- Phase 1 Test Harness Styles
+ * Pottery Mould Generator -- Core Application Styles
  * ============================================================
- * Minimal styling focused on split-panel layout with 3D preview.
+ * Split-panel layout: 2D profile editor | 3D preview | controls.
  * Colors match the Pottery Academy brand palette.
  */
 
@@ -60,8 +60,61 @@ main {
   min-height: calc(100vh - 50px);
 }
 
-#preview-container {
+/* ---- Profile Editor (2D Canvas) ---- */
+
+#editor-container {
   flex: 2;
+  position: relative;
+  min-height: 500px;
+  background-color: #faf8f5;
+  border-right: 1px solid var(--border);
+}
+
+#editor-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#editor-toolbar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+#editor-toolbar .tool-btn {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  background-color: transparent;
+  color: var(--dark);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+#editor-toolbar .tool-btn:hover {
+  background-color: rgba(194, 149, 107, 0.15);
+}
+
+#editor-toolbar .tool-btn.active {
+  background-color: var(--terra-cotta);
+  color: var(--cream);
+  border-color: var(--terra-cotta-dark);
+}
+
+/* ---- 3D Preview ---- */
+
+#preview-container {
+  flex: 1.5;
   position: relative;
   min-height: 500px;
   background-color: #ebe6e0;
@@ -188,6 +241,13 @@ pre {
 @media (max-width: 768px) {
   main {
     flex-direction: column;
+  }
+
+  #editor-container {
+    min-height: 300px;
+    flex: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
 
   #preview-container {

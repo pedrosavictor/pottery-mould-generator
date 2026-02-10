@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pottery Mould Generator - Phase 1 Test</title>
+  <title>Pottery Mould Generator</title>
   <script type="importmap">
   {
     "imports": {
@@ -12,6 +12,7 @@
     }
   }
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.18/paper-core.min.js"></script>
   <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
@@ -22,6 +23,13 @@
     </header>
 
     <main>
+      <div id="editor-container">
+        <div id="editor-toolbar">
+          <button id="btn-edit-tool" class="tool-btn active" title="Edit points and handles">Edit</button>
+          <button id="btn-draw-tool" class="tool-btn" title="Add points to profile">Draw</button>
+        </div>
+        <canvas id="profile-canvas" resize></canvas>
+      </div>
       <div id="preview-container"></div>
 
       <aside id="controls">
