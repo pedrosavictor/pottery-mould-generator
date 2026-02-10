@@ -1,29 +1,33 @@
 /**
  * app.js -- Main thread orchestrator for the Pottery Mould Generator.
  *
- * This module wires together the complete Phase 1 pipeline:
- *   1. Initialize Three.js scene (preview3d)
- *   2. Initialize geometry worker + WASM (geometryBridge)
- *   3. Auto-revolve test profile on load
- *   4. Wire up test buttons (revolve, memory test, clear)
+ * This module wires together the complete pipeline:
+ *   1. Initialize Paper.js profile editor (synchronous -- CDN loaded before module)
+ *   2. Initialize Three.js scene (preview3d)
+ *   3. Initialize geometry worker + WASM (geometryBridge)
+ *   4. Auto-revolve test profile on load
+ *   5. Wire editor onChange -> geometry bridge -> 3D preview
  *
  * DATA FLOW:
  * ----------
- *   getTestProfile() -> profile.points
- *     -> geometryBridge.revolveProfile(points)
- *       -> Web Worker postMessage
- *         -> replicad draw() -> revolve() -> mesh()
- *         -> Float32Array/Uint32Array via Transferable
- *       -> main thread receives mesh data
- *     -> preview3d.updateMesh(meshData)
- *       -> Three.js BufferGeometry -> render
+ *   Profile Editor (Paper.js)
+ *     -> onChange(profilePoints)
+ *       -> geometryBridge.generateWithCancellation(points)
+ *         -> Web Worker postMessage
+ *           -> replicad draw() -> revolve() -> mesh()
+ *           -> Float32Array/Uint32Array via Transferable
+ *         -> main thread receives mesh data (or null if stale)
+ *       -> preview3d.updateMesh(meshData)
+ *         -> Three.js BufferGeometry -> render
  *
  * All WASM operations run in the Web Worker. The main thread stays responsive.
+ * The profile editor uses latest-wins cancellation so rapid edits don't queue.
  */
 
 import * as geometryBridge from './geometryBridge.js';
 import * as preview3d from './preview3d.js';
-import { getTestProfile } from './profileData.js';
+import { getTestProfile, createProfile } from './profileData.js';
+import { initProfileEditor } from './profileEditor.js';
 
 // ============================================================
 // DOM References (populated on DOMContentLoaded)
@@ -36,6 +40,9 @@ let loadingIndicator = null;
 let loadingText = null;
 let testControls = null;
 let memoryResults = null;
+
+/** @type {{ getProfileData: function, setProfileData: function }|null} */
+let profileEditor = null;
 
 // ============================================================
 // Logging
@@ -52,6 +59,39 @@ function log(msg) {
     outputEl.textContent += msg + '\n';
     // Auto-scroll to bottom
     outputEl.scrollTop = outputEl.scrollHeight;
+  }
+}
+
+// ============================================================
+// Profile Editor -> 3D Preview pipeline
+// ============================================================
+
+/**
+ * Handle profile changes from the 2D editor.
+ *
+ * Uses generateWithCancellation() so rapid edits (e.g., dragging a handle)
+ * only render the latest result. Stale results are silently discarded.
+ *
+ * @param {Array<ProfilePoint>} profilePoints - Updated profile points from editor.
+ */
+async function onProfileChange(profilePoints) {
+  if (!geometryBridge.isReady()) return;
+  if (!profilePoints || profilePoints.length < 2) return;
+
+  try {
+    const result = await geometryBridge.generateWithCancellation(profilePoints);
+
+    if (result === null) return; // Stale -- newer edit already in flight
+
+    preview3d.updateMesh(result);
+
+    const vertexCount = result.vertices.length / 3;
+    const triangleCount = result.triangles.length / 3;
+    if (statusEl) {
+      statusEl.textContent = `Ready -- ${vertexCount} verts, ${triangleCount} tris`;
+    }
+  } catch (err) {
+    console.warn('[app] Profile change revolve error:', err.message);
   }
 }
 
@@ -176,6 +216,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   memoryResults = document.getElementById('memory-results');
 
   const container = document.getElementById('preview-container');
+
+  // Initialize Paper.js profile editor (synchronous -- CDN loaded in <head>)
+  // This must happen BEFORE WASM init so the user sees the 2D profile immediately.
+  const testProfile = getTestProfile();
+  try {
+    profileEditor = initProfileEditor('profile-canvas', {
+      initialProfile: testProfile,
+      onChange: onProfileChange,
+    });
+    log('Profile editor initialized');
+  } catch (err) {
+    console.error('[app] Profile editor init error:', err);
+    log(`EDITOR ERROR: ${err.message}`);
+  }
 
   // Initialize Three.js scene (immediate -- no async needed)
   preview3d.initScene(container);
