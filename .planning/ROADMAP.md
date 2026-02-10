@@ -34,12 +34,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Running 20 consecutive revolve operations does not increase WASM heap size beyond the first operation (memory cleanup works)
   4. The geometry bridge API returns a Promise that resolves with vertex/normal buffers, and cancels stale requests when a new one arrives
   5. The profile data model includes the v2 extension point (seamLines array) even though it is unused
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: WASM spike -- validate replicad CDN loading in Web Worker
-- [ ] 01-02: Geometry bridge and memory management architecture
-- [ ] 01-03: Basic revolution pipeline (profile points to mesh buffers)
+- [ ] 01-01-PLAN.md -- WASM spike: validate replicad CDN loading in Web Worker, answer 5 open questions
+- [ ] 01-02-PLAN.md -- Profile data model, geometry bridge, memory management (withCleanup)
+- [ ] 01-03-PLAN.md -- Three.js preview, end-to-end pipeline, memory leak test harness
 
 ### Phase 2: Profile Editor Core
 **Goal**: Users can draw and edit a pot cross-section profile using bezier curves with full control over the shape, with real-time constraint enforcement preventing invalid geometry.
@@ -180,7 +180,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. WASM Foundation | 0/3 | Not started | - |
+| 1. WASM Foundation | 0/3 | Planning complete | - |
 | 2. Profile Editor Core | 0/3 | Not started | - |
 | 3. Profile Editor Extended | 0/2 | Not started | - |
 | 4. Live 3D Preview | 0/3 | Not started | - |
