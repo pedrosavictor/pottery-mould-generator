@@ -28,6 +28,7 @@ import * as geometryBridge from './geometryBridge.js';
 import * as preview3d from './preview3d.js';
 import { getTestProfile, createProfile } from './profileData.js';
 import { initProfileEditor } from './profileEditor.js';
+import { generatePresetProfile, PRESET_DEFAULTS, PRESET_SLIDER_RANGES } from './presets/parametricPresets.js';
 
 // ============================================================
 // DOM References (populated on DOMContentLoaded)
@@ -41,8 +42,18 @@ let loadingText = null;
 let testControls = null;
 let memoryResults = null;
 
-/** @type {{ getProfileData: function, setProfileData: function }|null} */
+/** @type {{ getProfileData: function, setProfileData: function, setToolsEnabled: function }|null} */
 let profileEditor = null;
+
+// ============================================================
+// Mode & Preset State
+// ============================================================
+
+/** Current design mode: 'parametric' (sliders) or 'freehand' (bezier editing). */
+let currentMode = 'parametric';
+
+/** Currently selected preset name. */
+let currentPreset = 'cup';
 
 // ============================================================
 // Logging
@@ -202,6 +213,149 @@ async function doMemoryTest() {
 }
 
 // ============================================================
+// Parametric Controls
+// ============================================================
+
+/**
+ * Slider element IDs mapped to parameter keys used by generatePresetProfile().
+ * The DOM ids use kebab-case; the param keys use camelCase.
+ */
+const SLIDER_MAP = [
+  { id: 'height',        key: 'height' },
+  { id: 'rim-diameter',  key: 'rimDiameter' },
+  { id: 'belly-width',   key: 'bellyWidth' },
+  { id: 'foot-diameter', key: 'footDiameter' },
+];
+
+/**
+ * Initialize parametric controls: mode toggle, preset selector, and sliders.
+ * Called once during DOMContentLoaded.
+ */
+function initParametricControls() {
+  const presetSelect = document.getElementById('preset-selector');
+  const btnParametric = document.getElementById('btn-mode-parametric');
+  const btnFreehand = document.getElementById('btn-mode-freehand');
+  const parametricPanel = document.getElementById('parametric-controls');
+
+  // --- Preset selector ---
+  if (presetSelect) {
+    presetSelect.addEventListener('change', () => {
+      applyPreset(presetSelect.value);
+    });
+  }
+
+  // --- Mode toggle buttons ---
+  if (btnParametric) {
+    btnParametric.addEventListener('click', () => switchMode('parametric'));
+  }
+  if (btnFreehand) {
+    btnFreehand.addEventListener('click', () => switchMode('freehand'));
+  }
+
+  // --- Wire slider input events ---
+  for (const { id } of SLIDER_MAP) {
+    const slider = document.getElementById(`slider-${id}`);
+    const valSpan = document.getElementById(`val-${id}`);
+    if (slider) {
+      slider.addEventListener('input', () => {
+        if (valSpan) valSpan.textContent = slider.value;
+        regenerateFromSliders();
+      });
+    }
+  }
+
+  // --- Apply initial preset (cup) ---
+  applyPreset('cup');
+}
+
+/**
+ * Apply a preset: set slider ranges, values, and regenerate the profile.
+ *
+ * @param {string} presetName - One of 'cup', 'bowl', 'vase', 'tumbler'.
+ */
+function applyPreset(presetName) {
+  currentPreset = presetName;
+  const defaults = PRESET_DEFAULTS[presetName];
+  const ranges = PRESET_SLIDER_RANGES[presetName];
+  if (!defaults || !ranges) return;
+
+  for (const { id, key } of SLIDER_MAP) {
+    const slider = document.getElementById(`slider-${id}`);
+    const valSpan = document.getElementById(`val-${id}`);
+    const range = ranges[key];
+    if (!slider || !range) continue;
+
+    slider.min = range.min;
+    slider.max = range.max;
+    slider.step = range.step || 1;
+    slider.value = defaults[key];
+    if (valSpan) valSpan.textContent = defaults[key];
+  }
+
+  regenerateFromSliders();
+}
+
+/**
+ * Read current slider values and regenerate the profile from the current preset.
+ * Passes the result to the profile editor via setProfileData(), which triggers
+ * the onChange callback and updates the 3D preview.
+ */
+function regenerateFromSliders() {
+  if (!profileEditor) return;
+
+  const params = {};
+  for (const { id, key } of SLIDER_MAP) {
+    const slider = document.getElementById(`slider-${id}`);
+    if (slider) {
+      params[key] = parseFloat(slider.value);
+    }
+  }
+
+  const points = generatePresetProfile(currentPreset, params);
+  profileEditor.setProfileData(createProfile(points));
+}
+
+/**
+ * Switch between parametric and freehand design modes.
+ *
+ * - Parametric: sliders control the profile shape, editing tools disabled.
+ * - Freehand: direct bezier editing with Paper.js tools, sliders hidden.
+ *
+ * When switching parametric -> freehand: current profile carries over.
+ * When switching freehand -> parametric: profile regenerated from slider values.
+ *
+ * @param {'parametric'|'freehand'} mode - Target mode.
+ */
+function switchMode(mode) {
+  if (mode === currentMode) return;
+  currentMode = mode;
+
+  const btnParametric = document.getElementById('btn-mode-parametric');
+  const btnFreehand = document.getElementById('btn-mode-freehand');
+  const parametricPanel = document.getElementById('parametric-controls');
+
+  // Update mode button active states
+  if (btnParametric) {
+    btnParametric.classList.toggle('active', mode === 'parametric');
+  }
+  if (btnFreehand) {
+    btnFreehand.classList.toggle('active', mode === 'freehand');
+  }
+
+  if (mode === 'parametric') {
+    // Show parametric controls, disable direct editing
+    if (parametricPanel) parametricPanel.classList.remove('hidden');
+    if (profileEditor) profileEditor.setToolsEnabled(false);
+    regenerateFromSliders();
+  } else {
+    // Hide parametric controls, enable direct editing
+    // The current profile stays (carried over from parametric)
+    if (parametricPanel) parametricPanel.classList.add('hidden');
+    if (profileEditor) profileEditor.setToolsEnabled(true);
+  }
+}
+
+// ============================================================
 // Initialization
 // ============================================================
 
@@ -219,16 +373,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize Paper.js profile editor (synchronous -- CDN loaded in <head>)
   // This must happen BEFORE WASM init so the user sees the 2D profile immediately.
-  const testProfile = getTestProfile();
+  // Start with the cup preset instead of the hardcoded test profile.
+  const initialPoints = generatePresetProfile('cup', PRESET_DEFAULTS.cup);
+  const initialProfile = createProfile(initialPoints);
   try {
     profileEditor = initProfileEditor('profile-canvas', {
-      initialProfile: testProfile,
+      initialProfile: initialProfile,
       onChange: onProfileChange,
     });
     log('Profile editor initialized');
   } catch (err) {
     console.error('[app] Profile editor init error:', err);
     log(`EDITOR ERROR: ${err.message}`);
+  }
+
+  // Initialize parametric controls (mode toggle, preset selector, sliders)
+  initParametricControls();
+
+  // Start in parametric mode: disable direct editing tools
+  if (profileEditor) {
+    profileEditor.setToolsEnabled(false);
   }
 
   // Initialize Three.js scene (immediate -- no async needed)

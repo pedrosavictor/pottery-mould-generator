@@ -41,6 +41,50 @@
       <div id="preview-container"></div>
 
       <aside id="controls">
+        <div id="mode-controls">
+          <h3>Design Mode</h3>
+          <div class="mode-toggle">
+            <button id="btn-mode-parametric" class="mode-btn active">Parametric</button>
+            <button id="btn-mode-freehand" class="mode-btn">Freehand</button>
+          </div>
+        </div>
+
+        <div id="parametric-controls">
+          <div class="preset-field">
+            <label for="preset-selector">Shape</label>
+            <select id="preset-selector">
+              <option value="cup">Cup</option>
+              <option value="bowl">Bowl</option>
+              <option value="vase">Vase</option>
+              <option value="tumbler">Tumbler</option>
+            </select>
+          </div>
+          <div class="slider-field">
+            <label for="slider-height">Height</label>
+            <input type="range" id="slider-height" />
+            <span class="slider-value" id="val-height">--</span>
+            <span class="slider-unit">mm</span>
+          </div>
+          <div class="slider-field">
+            <label for="slider-rim-diameter">Rim diameter</label>
+            <input type="range" id="slider-rim-diameter" />
+            <span class="slider-value" id="val-rim-diameter">--</span>
+            <span class="slider-unit">mm</span>
+          </div>
+          <div class="slider-field">
+            <label for="slider-belly-width">Belly width</label>
+            <input type="range" id="slider-belly-width" />
+            <span class="slider-value" id="val-belly-width">--</span>
+            <span class="slider-unit">mm</span>
+          </div>
+          <div class="slider-field">
+            <label for="slider-foot-diameter">Foot diameter</label>
+            <input type="range" id="slider-foot-diameter" />
+            <span class="slider-value" id="val-foot-diameter">--</span>
+            <span class="slider-unit">mm</span>
+          </div>
+        </div>
+
         <div id="dimension-inputs">
           <h3>Dimensions</h3>
           <div class="dim-field">

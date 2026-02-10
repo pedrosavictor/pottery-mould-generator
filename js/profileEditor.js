@@ -81,6 +81,9 @@ export function initProfileEditor(canvasId, options = {}) {
   /** Whether snap-to-grid is enabled. */
   let snapEnabled = false;
 
+  /** Whether editing tools (edit/draw) are enabled. Disabled in parametric mode. */
+  let toolsEnabled = true;
+
   // --- 5. Render initial profile (if provided) ---
   let currentProfilePoints = initialProfile ? [...initialProfile.points] : [];
   let path = null;
@@ -168,6 +171,7 @@ export function initProfileEditor(canvasId, options = {}) {
 
   if (btnEdit) {
     btnEdit.addEventListener('click', () => {
+      if (!toolsEnabled) return;
       editTool.activate();
       setActiveButton(btnEdit);
     });
@@ -175,6 +179,7 @@ export function initProfileEditor(canvasId, options = {}) {
 
   if (btnDraw) {
     btnDraw.addEventListener('click', () => {
+      if (!toolsEnabled) return;
       drawTool.activate();
       setActiveButton(btnDraw);
     });
@@ -411,6 +416,48 @@ export function initProfileEditor(canvasId, options = {}) {
         renderViolations(result.violations, layers.overlay, transform);
       }
       updateConstraintStatus(result);
+
+      // Update dimension overlays and input fields
+      renderDimensions(currentProfilePoints, layers.overlay, transform);
+      updateDimensionInputs(currentProfilePoints);
+
+      if (onChange) {
+        onChange(currentProfilePoints);
+      }
+    },
+
+    /**
+     * Enable or disable the editing tools (edit/draw).
+     * When disabled, the Paper.js tools are deactivated and toolbar buttons
+     * are visually disabled. Used by parametric mode to prevent direct editing.
+     *
+     * @param {boolean} enabled - true to enable tools, false to disable.
+     */
+    setToolsEnabled(enabled) {
+      toolsEnabled = enabled;
+
+      if (enabled) {
+        // Re-enable: activate edit tool, restore button styles
+        editTool.activate();
+        if (btnEdit) {
+          btnEdit.disabled = false;
+          setActiveButton(btnEdit);
+        }
+        if (btnDraw) btnDraw.disabled = false;
+      } else {
+        // Disable: deactivate all Paper.js tools, grey out buttons
+        // Create a no-op tool to deactivate current tool
+        const noopTool = new paper.Tool();
+        noopTool.activate();
+        if (btnEdit) {
+          btnEdit.disabled = true;
+          btnEdit.classList.remove('active');
+        }
+        if (btnDraw) {
+          btnDraw.disabled = true;
+          btnDraw.classList.remove('active');
+        }
+      }
     },
   };
 }
