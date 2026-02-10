@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WASM Spike: replicad in Web Worker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #e6e6e6;
+      padding: 2rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      color: #e94560;
+      margin-bottom: 0.5rem;
+      font-size: 1.5rem;
+    }
+    h2 {
+      color: #0f3460;
+      background: #e6e6e6;
+      padding: 0.5rem 1rem;
+      margin: 1.5rem 0 0.5rem;
+      font-size: 1.1rem;
+      border-left: 4px solid #e94560;
+    }
+    .subtitle {
+      color: #888;
+      margin-bottom: 1.5rem;
+      font-size: 0.9rem;
+    }
+    #status {
+      background: #16213e;
+      border: 2px solid #0f3460;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    #status.loading { border-color: #e97c00; color: #e97c00; }
+    #status.ready { border-color: #00cc66; color: #00cc66; }
+    #status.error { border-color: #e94560; color: #e94560; }
+    #log {
+      background: #0d1117;
+      border: 1px solid #333;
+      padding: 1rem;
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      max-height: 600px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      border-radius: 4px;
+    }
+    .log-status { color: #58a6ff; }
+    .log-finding { color: #00cc66; }
+    .log-error { color: #e94560; font-weight: bold; }
+    .log-data { color: #aaa; }
+    .finding-box {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      padding: 0.75rem 1rem;
+      margin: 0.5rem 0;
+      border-radius: 4px;
+    }
+    .finding-box .label {
+      color: #e94560;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+    .finding-box .value {
+      color: #00cc66;
+      font-family: monospace;
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+    }
+    #answers {
+      display: none;
+    }
+    #answers.visible {
+      display: block;
+    }
+    .answer {
+      background: #16213e;
+      border-left: 3px solid #00cc66;
+      padding: 0.75rem 1rem;
+      margin: 0.5rem 0;
+      border-radius: 0 4px 4px 0;
+    }
+    .answer.failed {
+      border-left-color: #e94560;
+    }
+    .answer .q {
+      font-weight: bold;
+      color: #58a6ff;
+      font-size: 0.9rem;
+    }
+    .answer .a {
+      color: #e6e6e6;
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+    }
+    .fallback {
+      background: #2d1b00;
+      border: 1px solid #e97c00;
+      padding: 1rem;
+      margin-top: 1.5rem;
+      border-radius: 4px;
+      display: none;
+    }
+    .fallback.visible {
+      display: block;
+    }
+    .fallback h3 { color: #e97c00; margin-bottom: 0.5rem; }
+    .fallback code { background: #1a1a2e; padding: 0.2rem 0.4rem; border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <h1>WASM Spike: replicad CDN Loading in Web Worker</h1>
+  <p class="subtitle">
+    Validates 5 open questions from Phase 1 RESEARCH.md.
+    Open browser console for full details.
+  </p>
+
+  <div id="status" class="loading">Initializing...</div>
+
+  <h2>Open Question Answers</h2>
+  <div id="answers">
+    <div id="q1-answer" class="answer"><span class="q">Q1: Does replicad ESM load in a module worker from CDN?</span><div class="a">Pending...</div></div>
+    <div id="q2-answer" class="answer"><span class="q">Q2: What is the exact runtime type of shape.mesh()?</span><div class="a">Pending...</div></div>
+    <div id="q3-answer" class="answer"><span class="q">Q3: Does shape.delete() work without error?</span><div class="a">Pending...</div></div>
+    <div id="q4-answer" class="answer"><span class="q">Q4: Does XZ-plane revolve work for pottery profiles?</span><div class="a">Pending...</div></div>
+    <div id="q5-answer" class="answer"><span class="q">Q5: Is replicad_single.js ESM or CommonJS?</span><div class="a">Pending...</div></div>
+  </div>
+
+  <h2>Live Log</h2>
+  <div id="log"></div>
+
+  <div id="fallback" class="fallback">
+    <h3>CDN Loading Failed -- Fallback Options</h3>
+    <p>If replicad fails to load from CDN, try these alternatives:</p>
+    <ol style="margin: 0.5rem 0 0 1.5rem; line-height: 2;">
+      <li>Use <code>esm.sh</code> CDN which resolves bare specifier dependencies:
+        <code>https://esm.sh/replicad@0.20.5</code></li>
+      <li>Self-host the JS modules alongside the app (download from npm)</li>
+      <li>Bundle just the worker with a minimal Vite config</li>
+      <li>Fall back to raw <code>opencascade.js@2.0.0-beta</code></li>
+    </ol>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+    const answersEl = document.getElementById('answers');
+    const fallbackEl = document.getElementById('fallback');
+
+    const startTime = performance.now();
+
+    function log(text, className = '') {
+      const line = document.createElement('div');
+      line.className = className;
+      line.textContent = `[${((performance.now() - startTime) / 1000).toFixed(1)}s] ${text}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(text);
+    }
+
+    function updateAnswer(id, text, failed = false) {
+      const el = document.querySelector(`#${id} .a`);
+      if (el) el.textContent = text;
+      const box = document.getElementById(id);
+      if (box && failed) box.classList.add('failed');
+    }
+
+    // Create the worker
+    let worker;
+    try {
+      worker = new Worker('spike-worker.js', { type: 'module' });
+      log('Worker created with { type: "module" }', 'log-status');
+      answersEl.classList.add('visible');
+    } catch (err) {
+      statusEl.textContent = `Worker creation failed: ${err.message}`;
+      statusEl.className = 'error';
+      log(`FATAL: Cannot create module worker: ${err.message}`, 'log-error');
+      log('This browser may not support module workers.', 'log-error');
+      fallbackEl.classList.add('visible');
+    }
+
+    if (worker) {
+      worker.onmessage = (e) => {
+        const msg = e.data;
+
+        switch (msg.type) {
+          case 'status':
+            statusEl.textContent = msg.message;
+            log(msg.message, 'log-status');
+            break;
+
+          case 'finding': {
+            const data = msg.data;
+            log(`FINDING [${msg.key}]: ${data.conclusion || JSON.stringify(data).substring(0, 200)}`, 'log-finding');
+            console.log(`Finding ${msg.key}:`, data);
+
+            // Update answer boxes
+            switch (msg.key) {
+              case 'Q1':
+                updateAnswer('q1-answer', data.conclusion, !data.success);
+                if (!data.success) fallbackEl.classList.add('visible');
+                break;
+              case 'Q2':
+                updateAnswer('q2-answer', data.conclusion);
+                break;
+              case 'Q3':
+                updateAnswer('q3-answer', data.conclusion, !data.success);
+                break;
+              case 'Q4_rectangle':
+                updateAnswer('q4-answer', data.conclusion, !data.producedValidMesh);
+                break;
+              case 'Q4_cup':
+                // Append cup result to Q4
+                const q4El = document.querySelector('#q4-answer .a');
+                if (q4El) q4El.textContent += ' | ' + data.conclusion;
+                break;
+              case 'Q5':
+                updateAnswer('q5-answer', data.conclusion);
+                break;
+            }
+            break;
+          }
+
+          case 'error':
+            log(`ERROR [${msg.step}]: ${msg.error}`, 'log-error');
+            statusEl.className = 'error';
+            if (msg.step === 'Q1' || msg.step === 'opencascade_import' || msg.step === 'wasm_init') {
+              fallbackEl.classList.add('visible');
+            }
+            break;
+
+          case 'complete': {
+            const elapsed = ((performance.now() - startTime) / 1000).toFixed(1);
+            const r = msg.results;
+            const hasErrors = r.errors && r.errors.length > 0;
+
+            if (hasErrors) {
+              statusEl.textContent = `Spike complete with ${r.errors.length} error(s) in ${elapsed}s`;
+              statusEl.className = 'error';
+            } else {
+              statusEl.textContent = `All tests passed in ${elapsed}s`;
+              statusEl.className = 'ready';
+            }
+
+            log('', '');
+            log('========== SUMMARY ==========', 'log-status');
+            log(`Total time: ${elapsed}s`, 'log-data');
+            if (r.timings.wasmInit) log(`WASM init: ${r.timings.wasmInit}ms`, 'log-data');
+            if (r.timings.rectangleRevolve) log(`Rectangle revolve: ${r.timings.rectangleRevolve}ms`, 'log-data');
+            if (r.timings.rectangleMesh) log(`Rectangle mesh: ${r.timings.rectangleMesh}ms`, 'log-data');
+            log(`Errors: ${r.errors?.length || 0}`, r.errors?.length ? 'log-error' : 'log-data');
+
+            console.log('FULL SPIKE RESULTS:', JSON.stringify(r, null, 2));
+            break;
+          }
+        }
+      };
+
+      worker.onerror = (err) => {
+        log(`Worker error: ${err.message}`, 'log-error');
+        statusEl.textContent = `Worker error: ${err.message}`;
+        statusEl.className = 'error';
+        fallbackEl.classList.add('visible');
+      };
+    }
+  </script>
+</body>
+</html>
