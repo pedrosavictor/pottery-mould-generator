@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 1 of 9 (WASM Foundation)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-10 -- Completed 01-01-PLAN.md (WASM spike + production worker)
+Last activity: 2026-02-10 -- Completed 01-02-PLAN.md (Geometry bridge + memory management)
 
-Progress: [█░░░░░░░░░░░░░░░░░░░░░░░░] 4% (1/24 plans)
+Progress: [██░░░░░░░░░░░░░░░░░░░░░░░] 8% (2/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: ~5 minutes
-- Total execution time: ~5 minutes
+- Total plans completed: 2
+- Average duration: ~4 minutes
+- Total execution time: ~8 minutes
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. WASM Foundation | 1/3 | ~5m | ~5m |
+| 1. WASM Foundation | 2/3 | ~8m | ~4m |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (~5m)
-- Trend: Starting
+- Last 5 plans: 01-01 (~5m), 01-02 (~3m)
+- Trend: Stable
 
 *Updated after each plan completion*
 
@@ -49,19 +49,22 @@ Recent decisions affecting current work:
 - [01-01]: Assume shape.mesh() returns JS arrays, convert to Float32Array for Transferable
 - [01-01]: Auto-close profiles back to revolution axis for watertight solid
 - [01-01]: Eager WASM initialization on worker load (don't wait for first message)
+- [01-02]: Generation counter cancellation (latest-wins) instead of AbortController for WASM ops
+- [01-02]: withCleanup((track) => { ... }) pattern for guaranteed WASM memory cleanup
+- [01-02]: Profile validation rejects x === 0 mid-profile to prevent self-intersecting solids
 
 ### Pending Todos
 
-- CRITICAL: Run spike/wasm-spike.html in a browser to validate 5 open questions before proceeding to 01-02
+- CRITICAL: Run spike/wasm-spike.html in a browser to validate 5 open questions before proceeding to 01-03
 
 ### Blockers/Concerns
 
-- [Phase 1]: WASM CDN loading pattern is coded but NOT YET VALIDATED in a browser. Spike must be run before 01-02.
+- [Phase 1]: WASM CDN loading pattern is coded but NOT YET VALIDATED in a browser. Spike must be run before 01-03.
 - [Phase 1]: If replicad.js has internal bare specifier imports, CDN loading will fail. Fallback: esm.sh, self-hosted bundle, or Vite worker build.
 - [Phase 6]: Ridge/groove dimensions and clearance values need physical test prints to validate -- cannot be determined from research alone
 
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 01-01-PLAN.md
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
