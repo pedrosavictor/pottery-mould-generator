@@ -5,34 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 2 - Profile Editor Core (Plan 2 of 3 complete)
+**Current focus:** Phase 2 complete -- Profile Editor Core (3/3 plans done)
 
 ## Current Position
 
 Phase: 2 of 9 (Profile Editor Core)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-10 -- Completed 02-02-PLAN.md (Constraint enforcement and validation)
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-10 -- Completed 02-03-PLAN.md (Undo/redo, grid, snap, dimensions)
 
-Progress: [█████░░░░░░░░░░░░░░░░░░░░] 21% (5/24 plans)
+Progress: [██████░░░░░░░░░░░░░░░░░░░] 25% (6/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: ~4 minutes
-- Total execution time: ~20 minutes
+- Total execution time: ~25 minutes
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. WASM Foundation | 3/3 | ~12m | ~4m |
-| 2. Profile Editor Core | 2/3 | ~8m | ~4m |
+| 2. Profile Editor Core | 3/3 | ~13m | ~4m |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (~3m), 01-03 (~4m), 02-01 (~5m), 02-02 (~3m)
-- Trend: Stable
+- Last 5 plans: 01-03 (~4m), 02-01 (~5m), 02-02 (~3m), 02-03 (~5m)
+- Trend: Stable at ~4m/plan
 
 *Updated after each plan completion*
 
@@ -67,12 +67,20 @@ Recent decisions affecting current work:
 - [02-02]: Undercut tolerance -0.5mm to avoid false positives from floating point
 - [02-02]: Foot zone default 5mm -- undercut checking skipped below this height
 - [02-02]: Constraint status uses sage green for valid, red for invalid
+- [02-03]: JSON.stringify/parse for undo snapshots (safe for plain profile data)
+- [02-03]: Adaptive grid spacing: <2px/mm=10mm, <5=5mm, <15=2mm, else 1mm
+- [02-03]: Terra cotta axis line (solid, thick) with "axis" label
+- [02-03]: Named 'dimensions' group in overlay layer to coexist with constraint markers
+- [02-03]: Proportional scaling for dimension input (preserves shape character)
+- [02-03]: Belly diameter read-only (scaling ambiguous -- user drags points directly)
 
 ### Pending Todos
 
 - Browser validation of WASM CDN loading still pending (deferred from headless CI). First browser test should confirm: replicad ESM loads, WASM binary loads, mesh renders, memory test passes.
 - Browser validation of profile editor -- coordinate transforms and handle mapping need visual confirmation.
 - Browser validation of constraint overlay rendering and status indicator appearance.
+- Browser validation of undo/redo keyboard shortcuts (Cmd vs Ctrl detection).
+- Browser validation of dimension overlay positioning and grid adaptive spacing.
 
 ### Blockers/Concerns
 
@@ -84,5 +92,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-10
-Stopped at: Completed 02-02-PLAN.md
+Stopped at: Completed 02-03-PLAN.md (Phase 2 complete)
 Resume file: None
