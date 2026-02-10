@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pottery Mould Generator - Phase 1 Test</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.172.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.172.0/examples/jsm/"
+    }
+  }
+  </script>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Pottery Mould Generator</h1>
+      <span id="status">Initializing...</span>
+    </header>
+
+    <main>
+      <div id="preview-container"></div>
+
+      <aside id="controls">
+        <h2>Phase 1 Test Harness</h2>
+
+        <div id="loading-indicator" class="visible">
+          <div class="spinner"></div>
+          <p id="loading-text">Loading geometry engine...</p>
+        </div>
+
+        <div id="test-controls" class="hidden">
+          <button id="btn-revolve">Revolve Test Profile</button>
+          <button id="btn-memory-test">Run Memory Test (20x)</button>
+          <button id="btn-clear">Clear Mesh</button>
+        </div>
+
+        <div id="results">
+          <h3>Results</h3>
+          <pre id="output"></pre>
+        </div>
+
+        <div id="memory-results" class="hidden">
+          <h3>Memory Test Results</h3>
+          <pre id="memory-output"></pre>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

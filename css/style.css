@@ -1,0 +1,203 @@
+/* ============================================================
+ * Pottery Mould Generator -- Phase 1 Test Harness Styles
+ * ============================================================
+ * Minimal styling focused on split-panel layout with 3D preview.
+ * Colors match the Pottery Academy brand palette.
+ */
+
+:root {
+  --cream: #f5f0eb;
+  --terra-cotta: #c2956b;
+  --terra-cotta-dark: #a87d56;
+  --sage: #7a8b6f;
+  --dark: #2d2d2d;
+  --border: #ddd;
+}
+
+/* ---- Reset & Base ---- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--cream);
+  color: var(--dark);
+}
+
+/* ---- Header ---- */
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--dark);
+  color: var(--cream);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+#status {
+  font-size: 0.875rem;
+  opacity: 0.85;
+}
+
+/* ---- Main Layout ---- */
+
+main {
+  display: flex;
+  min-height: calc(100vh - 50px);
+}
+
+#preview-container {
+  flex: 2;
+  position: relative;
+  min-height: 500px;
+  background-color: #ebe6e0;
+}
+
+#preview-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+aside#controls {
+  flex: 1;
+  min-width: 280px;
+  max-width: 400px;
+  padding: 1.25rem;
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+aside#controls h2 {
+  margin: 0 0 1rem;
+  font-size: 1.1rem;
+  color: var(--dark);
+}
+
+aside#controls h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+  color: var(--dark);
+}
+
+/* ---- Loading Indicator ---- */
+
+#loading-indicator {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+#loading-indicator p {
+  margin: 1rem 0 0;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.spinner {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--terra-cotta);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Buttons ---- */
+
+#test-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+button {
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--terra-cotta);
+  color: var(--cream);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+button:hover {
+  background-color: var(--terra-cotta-dark);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Results Output ---- */
+
+pre {
+  margin: 0;
+  padding: 0.75rem;
+  max-height: 300px;
+  overflow: auto;
+  background-color: var(--dark);
+  color: var(--cream);
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- Utility Classes ---- */
+
+.hidden {
+  display: none !important;
+}
+
+.visible {
+  display: block;
+}
+
+/* ---- Responsive: Stack at narrow viewports ---- */
+
+@media (max-width: 768px) {
+  main {
+    flex-direction: column;
+  }
+
+  #preview-container {
+    min-height: 300px;
+    flex: none;
+  }
+
+  aside#controls {
+    max-width: none;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+}
