@@ -12,7 +12,7 @@ This roadmap takes the Pottery Mould Generator from zero to a complete browser-b
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: WASM Foundation** - OpenCASCADE.js in Web Worker with memory management and basic revolution
+- [x] **Phase 1: WASM Foundation** - OpenCASCADE.js in Web Worker with memory management and basic revolution
 - [ ] **Phase 2: Profile Editor Core** - Bezier curve editor with constraints and undo/redo
 - [ ] **Phase 3: Profile Editor Extended** - Parametric presets, SVG import, reference image overlay
 - [ ] **Phase 4: Live 3D Preview** - Three.js visualization connected to profile editing
@@ -51,12 +51,12 @@ Plans:
   3. Profile editor prevents invalid geometry in real time -- undercuts, self-intersections, and axis crossings are visually flagged and blocked
   4. User can undo and redo profile edits with standard keyboard shortcuts (Cmd+Z / Cmd+Shift+Z)
   5. User can enter precise numeric dimensions (e.g., rim diameter, height) and the profile updates to match
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Paper.js canvas with bezier curve drawing and editing
-- [ ] 02-02: Constraint enforcement and validation system
-- [ ] 02-03: Undo/redo, snap-to-grid, measurement overlays, and dimension input
+- [ ] 02-01-PLAN.md -- Paper.js canvas with bezier curve drawing and editing (Wave 1)
+- [ ] 02-02-PLAN.md -- Constraint enforcement and validation system (Wave 2)
+- [ ] 02-03-PLAN.md -- Undo/redo, snap-to-grid, measurement overlays, and dimension input (Wave 2)
 
 ### Phase 3: Profile Editor Extended
 **Goal**: Users have multiple ways to start a design -- choosing a parametric preset, uploading an existing SVG, or tracing a photo -- making the tool accessible regardless of drawing skill.
@@ -180,8 +180,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. WASM Foundation | 0/3 | Planning complete | - |
-| 2. Profile Editor Core | 0/3 | Not started | - |
+| 1. WASM Foundation | 3/3 | Complete | 2026-02-10 |
+| 2. Profile Editor Core | 0/3 | Planned | - |
 | 3. Profile Editor Extended | 0/2 | Not started | - |
 | 4. Live 3D Preview | 0/3 | Not started | - |
 | 5. Inner Mould Generation | 0/2 | Not started | - |
