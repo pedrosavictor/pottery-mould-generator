@@ -212,6 +212,81 @@ aside#controls h3 {
   color: var(--dark);
 }
 
+/* ---- Dimension Inputs Panel ---- */
+
+#dimension-inputs {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+#dimension-inputs h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: var(--dark);
+}
+
+.dim-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.dim-field label {
+  font-size: 0.85rem;
+  color: #555;
+  flex-shrink: 0;
+}
+
+.dim-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dim-input-group input[type="number"] {
+  width: 80px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--dark);
+  background-color: #fff;
+  text-align: right;
+  -moz-appearance: textfield;
+}
+
+.dim-input-group input[type="number"]::-webkit-inner-spin-button,
+.dim-input-group input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
+.dim-input-group input[type="number"]:focus {
+  outline: none;
+  border-color: var(--terra-cotta);
+  box-shadow: 0 0 0 2px rgba(194, 149, 107, 0.2);
+}
+
+.dim-unit {
+  font-size: 0.8rem;
+  color: #888;
+  min-width: 22px;
+}
+
+.dim-readout {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.dim-readout strong {
+  color: var(--dark);
+  font-weight: 600;
+}
+
 /* ---- Loading Indicator ---- */
 
 #loading-indicator {

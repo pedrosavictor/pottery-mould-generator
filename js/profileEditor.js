@@ -40,6 +40,8 @@ import { createDrawTool } from './profileEditor/drawTool.js';
 import { validateConstraints, clearViolations, renderViolations } from './profileEditor/constraints.js';
 import { createUndoManager } from './profileEditor/undoManager.js';
 import { renderGrid } from './profileEditor/gridOverlay.js';
+import { renderDimensions, getDimensions, applyDimensionInput } from './profileEditor/dimensionOverlay.js';
+import { createProfile } from './profileData.js';
 
 /**
  * Initialize the profile editor on the given canvas element.
@@ -140,6 +142,10 @@ export function initProfileEditor(canvasId, options = {}) {
       }
       updateConstraintStatus(result);
 
+      // Update dimension overlays and input fields
+      renderDimensions(currentProfilePoints, layers.overlay, transform);
+      updateDimensionInputs(currentProfilePoints);
+
       if (onChange) {
         onChange(currentProfilePoints);
       }
@@ -188,6 +194,70 @@ export function initProfileEditor(canvasId, options = {}) {
     chkSnap.addEventListener('change', () => {
       snapEnabled = chkSnap.checked;
     });
+  }
+
+  // --- Dimension input fields ---
+  const inputHeight = document.getElementById('input-height');
+  const inputRimDiam = document.getElementById('input-rim-diameter');
+  const readoutBelly = document.getElementById('readout-belly');
+  const readoutFoot = document.getElementById('readout-foot');
+
+  if (inputHeight) {
+    inputHeight.addEventListener('change', () => {
+      const val = parseFloat(inputHeight.value);
+      if (!val || val <= 0) return;
+      const newPoints = applyDimensionInput(currentProfilePoints, 'height', val);
+      const profile = createProfile(newPoints);
+      editorState.path = null; // force re-render
+      setProfileDataInternal(profile);
+    });
+  }
+
+  if (inputRimDiam) {
+    inputRimDiam.addEventListener('change', () => {
+      const val = parseFloat(inputRimDiam.value);
+      if (!val || val <= 0) return;
+      const newPoints = applyDimensionInput(currentProfilePoints, 'rimDiameter', val);
+      const profile = createProfile(newPoints);
+      editorState.path = null; // force re-render
+      setProfileDataInternal(profile);
+    });
+  }
+
+  /**
+   * Internal setProfileData that always pushes to undo stack.
+   * Used by dimension inputs.
+   */
+  function setProfileDataInternal(profile) {
+    if (!profile || !Array.isArray(profile.points) || profile.points.length < 2) return;
+
+    currentProfilePoints = [...profile.points];
+    path = renderProfile(currentProfilePoints, transform, layers.profile);
+    editorState.selectedSegmentIndex = -1;
+    renderHandles(path, layers.handles);
+
+    undoMgr.push(currentProfilePoints);
+    updateUndoRedoButtons();
+
+    clearViolations(layers.overlay);
+    const result = validateConstraints(path, transform);
+    if (!result.valid) {
+      renderViolations(result.violations, layers.overlay, transform);
+    }
+    updateConstraintStatus(result);
+
+    renderDimensions(currentProfilePoints, layers.overlay, transform);
+    updateDimensionInputs(currentProfilePoints);
+
+    if (onChange) {
+      onChange(currentProfilePoints);
+    }
+  }
+
+  // Render initial dimensions and populate inputs
+  if (currentProfilePoints.length >= 2) {
+    renderDimensions(currentProfilePoints, layers.overlay, transform);
+    updateDimensionInputs(currentProfilePoints);
   }
 
   // --- Keyboard shortcuts for undo/redo ---
@@ -262,6 +332,10 @@ export function initProfileEditor(canvasId, options = {}) {
       renderViolations(result.violations, layers.overlay, transform);
     }
     updateConstraintStatus(result);
+
+    // Update dimension overlays and inputs
+    renderDimensions(currentProfilePoints, layers.overlay, transform);
+    updateDimensionInputs(currentProfilePoints);
 
     if (onChange) {
       onChange(currentProfilePoints);
@@ -356,6 +430,37 @@ function setActiveButton(activeBtn) {
   const buttons = toolbar.querySelectorAll('.tool-btn');
   buttons.forEach(btn => btn.classList.remove('active'));
   activeBtn.classList.add('active');
+}
+
+/**
+ * Update the dimension input fields and read-only readouts with current values.
+ * Skips updating an input if it currently has focus (user is typing).
+ *
+ * @param {Array<ProfilePoint>} profilePoints - Current profile points.
+ */
+function updateDimensionInputs(profilePoints) {
+  const dims = getDimensions(profilePoints);
+
+  const inputHeight = document.getElementById('input-height');
+  const inputRimDiam = document.getElementById('input-rim-diameter');
+  const readoutBelly = document.getElementById('readout-belly');
+  const readoutFoot = document.getElementById('readout-foot');
+
+  if (inputHeight && document.activeElement !== inputHeight) {
+    inputHeight.value = dims.height;
+  }
+
+  if (inputRimDiam && document.activeElement !== inputRimDiam) {
+    inputRimDiam.value = dims.rimDiameter;
+  }
+
+  if (readoutBelly) {
+    readoutBelly.textContent = dims.maxDiameter || '--';
+  }
+
+  if (readoutFoot) {
+    readoutFoot.textContent = dims.footDiameter || '--';
+  }
 }
 
 /**

@@ -41,6 +41,28 @@
       <div id="preview-container"></div>
 
       <aside id="controls">
+        <div id="dimension-inputs">
+          <h3>Dimensions</h3>
+          <div class="dim-field">
+            <label for="input-height">Height</label>
+            <div class="dim-input-group">
+              <input type="number" id="input-height" step="0.5" min="1" max="500" />
+              <span class="dim-unit">mm</span>
+            </div>
+          </div>
+          <div class="dim-field">
+            <label for="input-rim-diameter">Rim diameter</label>
+            <div class="dim-input-group">
+              <input type="number" id="input-rim-diameter" step="0.5" min="1" max="500" />
+              <span class="dim-unit">mm</span>
+            </div>
+          </div>
+          <div class="dim-readout">
+            <span>Belly: <strong id="readout-belly">--</strong> mm</span>
+            <span>Foot: <strong id="readout-foot">--</strong> mm</span>
+          </div>
+        </div>
+
         <h2>Phase 1 Test Harness</h2>
 
         <div id="loading-indicator" class="visible">
