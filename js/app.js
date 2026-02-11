@@ -75,6 +75,9 @@ const mouldParams = {
   cavityGap: 25,           // mm default plaster cavity gap
   splitCount: 2,           // 2 for halves, 4 for quarters
   outerWallThickness: 2.4, // mm default outer mould wall thickness
+  clearance: 0.3,          // mm assembly clearance for ridge/groove fit
+  ringHeight: 8,           // mm height of bottom ring
+  pourHoleRadius: 15,      // mm radius of pour hole (30mm diameter)
 };
 
 // ============================================================
@@ -619,6 +622,32 @@ function initMouldSettings() {
     mouldParams.splitCount = parseInt(selectSplitCount.value, 10);
     selectSplitCount.addEventListener('change', () => {
       mouldParams.splitCount = parseInt(selectSplitCount.value, 10);
+      regenerateMould();
+    });
+  }
+
+  // Wire clearance slider
+  const sliderClearance = document.getElementById('slider-clearance');
+  const valClearance = document.getElementById('val-clearance');
+  if (sliderClearance) {
+    mouldParams.clearance = parseFloat(sliderClearance.value);
+    sliderClearance.addEventListener('input', () => {
+      const mm = parseFloat(sliderClearance.value);
+      if (valClearance) valClearance.textContent = mm;
+      mouldParams.clearance = mm;
+      regenerateMould();
+    });
+  }
+
+  // Wire outer wall thickness slider
+  const sliderOuterWall = document.getElementById('slider-outer-wall');
+  const valOuterWall = document.getElementById('val-outer-wall');
+  if (sliderOuterWall) {
+    mouldParams.outerWallThickness = parseFloat(sliderOuterWall.value);
+    sliderOuterWall.addEventListener('input', () => {
+      const mm = parseFloat(sliderOuterWall.value);
+      if (valOuterWall) valOuterWall.textContent = mm;
+      mouldParams.outerWallThickness = mm;
       regenerateMould();
     });
   }

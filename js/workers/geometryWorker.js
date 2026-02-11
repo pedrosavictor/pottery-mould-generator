@@ -483,7 +483,26 @@ function generateRing(scaledPoints, mouldProfile, mouldParams, track) {
     { x: ringOuterRadius, y: bottomZ - ringHeight, type: 'line' },
   ];
 
-  const ringSolid = track(buildAndRevolve(ringProfile));
+  let ringSolid = track(buildAndRevolve(ringProfile));
+
+  // Pour hole: cylindrical hole through the ring for plaster introduction.
+  // Positioned at the midpoint of ring radial width, on the Y=0 plane.
+  // Diameter = 30mm (15mm radius) -- large enough for plaster to flow.
+  const pourHoleRadius = mouldParams.pourHoleRadius || 15;
+  const pourHoleMidR = (ringInnerRadius + ringOuterRadius) / 2;
+
+  // Only add pour hole if the ring is wide enough (hole diameter < ring width)
+  if (pourHoleRadius * 2 < (ringOuterRadius - ringInnerRadius) * 0.9) {
+    const pourHoleTool = track(
+      makeCylinder(
+        pourHoleRadius,
+        ringHeight + 4,  // extend beyond ring top and bottom to ensure clean cut
+        [pourHoleMidR, 0, bottomZ - ringHeight - 2],
+        [0, 0, 1]        // cylinder axis along Z (vertical)
+      )
+    );
+    ringSolid = track(ringSolid.cut(pourHoleTool));
+  }
 
   // Split to match outer mould configuration
   return splitSolid(ringSolid, splitCount, track);
