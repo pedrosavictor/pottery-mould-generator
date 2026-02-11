@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 15 COMPLETE -- URL Sharing & State Fixes (3 URL items resolved).
+**Current focus:** Phase 16 COMPLETE -- Accessibility (WCAG 2.1 AA) (9 A11Y items resolved).
 
 ## Current Position
 
-Phase: 15 of 15 (URL Sharing & State Fixes)
+Phase: 16 of 16 (Accessibility - WCAG 2.1 AA)
 Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-11 -- Completed Phase 15 (URL-01 through URL-03)
+Last activity: 2026-02-11 -- Completed Phase 16 (A11Y-01 through A11Y-09)
 
-Progress: [██████████████████████████████] 100% (30/30 plans)
+Progress: [███████████████████████████████] 100% (31/31 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 30
+- Total plans completed: 31
 - Average duration: ~2.9 minutes
-- Total execution time: ~73 minutes
+- Total execution time: ~76 minutes
 
 **By Phase:**
 
@@ -42,9 +42,10 @@ Progress: [███████████████████████
 | 13. Brand Alignment | 1/1 | ~4m | ~4m |
 | 14. Preset Defaults & Geometry Fixes | 1/1 | ~5m | ~5m |
 | 15. URL Sharing & State Fixes | 1/1 | ~3m | ~3m |
+| 16. Accessibility (WCAG 2.1 AA) | 1/1 | ~3m | ~3m |
 
 **Recent Trend:**
-- Last 5 plans: 12-01, 13-01, 14-01, 15-01 (~3-5m)
+- Last 5 plans: 13-01, 14-01, 15-01, 16-01 (~3-5m)
 - Trend: Stable at ~3-5m per plan
 
 *Updated after each plan completion*
@@ -150,6 +151,9 @@ Recent decisions affecting current work:
 - [15-01]: safeBase64Encode/Decode wrappers for non-ASCII safety in URL sharing
 - [15-01]: URL_LENGTH_WARN_THRESHOLD = 4000 chars; user-visible warning on share only
 - [15-01]: regenerateMould() now calls updateURL() to keep address bar current
+- [16-01]: 3px solid var(--text-color) with 2px offset for :focus-visible indicators
+- [16-01]: Focus trap filters focusable elements by checking closest parent view hidden state
+- [16-01]: aria-labelledby updated dynamically when switching modal views
 
 ### Pending Todos
 
@@ -182,5 +186,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed Phase 15 (URL Sharing & State Fixes). All 30 plans complete.
+Stopped at: Completed Phase 16 (Accessibility WCAG 2.1 AA). All 31 plans complete.
 Resume file: None
