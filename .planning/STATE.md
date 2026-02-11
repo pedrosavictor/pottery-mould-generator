@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 4 IN PROGRESS -- Live 3D Preview (2/3 plans done). Next: 04-03 (camera controls and annotations).
+**Current focus:** Phase 4 COMPLETE -- Live 3D Preview (3/3 plans done). Next: Phase 5 (Mould Shell Generation).
 
 ## Current Position
 
 Phase: 4 of 9 (Live 3D Preview)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-11 -- Completed 04-02-PLAN.md (real-time drag preview with dual-tier pipeline)
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-11 -- Completed 04-03-PLAN.md (view controls, exploded view, measurements)
 
-Progress: [██████████░░░░░░░░░░░░░░░] 42% (10/24 plans)
+Progress: [███████████░░░░░░░░░░░░░░] 46% (11/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: ~3.7 minutes
-- Total execution time: ~36.8 minutes
+- Total plans completed: 11
+- Average duration: ~3.6 minutes
+- Total execution time: ~39.3 minutes
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [██████████░░░░░░░░░░░░░
 | 1. WASM Foundation | 3/3 | ~12m | ~4m |
 | 2. Profile Editor Core | 3/3 | ~13m | ~4m |
 | 3. Profile Editor Extended | 2/2 | ~7m | ~3.5m |
-| 4. Live 3D Preview | 2/3 | ~4.8m | ~2.4m |
+| 4. Live 3D Preview | 3/3 | ~7.3m | ~2.4m |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (~4m), 03-02 (~3m), 04-01 (~3.5m), 04-02 (~1.3m)
+- Last 5 plans: 03-02 (~3m), 04-01 (~3.5m), 04-02 (~1.3m), 04-03 (~2.5m)
 - Trend: Accelerating -- simpler wiring plans execute faster
 
 *Updated after each plan completion*
@@ -93,6 +93,11 @@ Recent decisions affecting current work:
 - [04-02]: notifyLivePreview fires on every mouseDrag without throttling (LatheGeometry is ~1ms)
 - [04-02]: Separate onLivePreview callback from onChange for lightweight drag path
 - [04-02]: Preview status shows 'Preview' during drag, CAD stats after WASM result
+- [04-03]: Canvas-sprite text labels (no CSS2DRenderer) for zero additional dependencies
+- [04-03]: sizeAttenuation=false for screen-space label sizing regardless of zoom
+- [04-03]: EXPLODED_OFFSETS lookup table for clean extension in Phases 5-6
+- [04-03]: Mould/ring/proof checkboxes disabled until parts are generated
+- [04-03]: depthTest=false on measurement lines and sprites for always-visible annotations
 
 ### Pending Todos
 
@@ -105,6 +110,7 @@ Recent decisions affecting current work:
 - Browser validation of SVG import parsing and reference image overlay.
 - Browser validation of LatheGeometry visual quality and preview status overlay positioning.
 - Browser validation of real-time drag preview (3D updates during drag, WASM upgrade on release).
+- Browser validation of view controls toggle interaction and measurement label readability.
 
 ### Blockers/Concerns
 
@@ -116,5 +122,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed 04-02-PLAN.md (real-time drag preview with dual-tier pipeline)
+Stopped at: Completed 04-03-PLAN.md (view controls, exploded view, measurements) -- Phase 4 complete
 Resume file: None
