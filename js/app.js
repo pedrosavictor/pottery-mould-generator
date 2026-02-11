@@ -84,6 +84,24 @@ function log(msg) {
 // ============================================================
 
 /**
+ * Handle lightweight live preview during drag operations.
+ *
+ * Only updates the LatheGeometry fallback (synchronous, ~1ms).
+ * Does NOT trigger WASM generation -- that happens on mouseUp
+ * via onProfileChange/notifyChange.
+ *
+ * This is intentionally minimal: no WASM check, no status update,
+ * no logging. It fires on every mouseDrag event and must stay fast.
+ *
+ * @param {Array<ProfilePoint>} profilePoints - Current profile points.
+ */
+function onLivePreview(profilePoints) {
+  if (!profilePoints || profilePoints.length < 2) return;
+  preview3d.updateLatheFallback(profilePoints);
+  updatePreviewStatus('Preview');
+}
+
+/**
  * Handle profile changes from the 2D editor.
  *
  * Dual-path update:
@@ -522,6 +540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     profileEditor = initProfileEditor('profile-canvas', {
       initialProfile: initialProfile,
       onChange: onProfileChange,
+      onLivePreview: onLivePreview,
     });
     log('Profile editor initialized');
   } catch (err) {
