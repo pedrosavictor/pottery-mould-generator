@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 12 COMPLETE -- Critical Bug Fixes (6 bugs fixed in 4 commits).
+**Current focus:** Phase 13 COMPLETE -- Brand Alignment (23 BRAND items resolved).
 
 ## Current Position
 
-Phase: 12 of 12 (Critical Bug Fixes)
+Phase: 13 of 13 (Brand Alignment)
 Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-11 -- Completed Phase 12 (FIX-09 through FIX-14)
+Last activity: 2026-02-11 -- Completed Phase 13 (BRAND-01 through BRAND-23)
 
-Progress: [███████████████████████████] 100% (27/27 plans)
+Progress: [████████████████████████████] 100% (28/28 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 27
+- Total plans completed: 28
 - Average duration: ~2.9 minutes
-- Total execution time: ~60.8 minutes
+- Total execution time: ~65 minutes
 
 **By Phase:**
 
@@ -39,9 +39,10 @@ Progress: [███████████████████████
 | 10. Console Bug Fixes | 1/1 | ~2m | ~2m |
 | 11. Unblock Development | 1/1 | ~2m | ~2m |
 | 12. Critical Bug Fixes | 1/1 | ~4m | ~4m |
+| 13. Brand Alignment | 1/1 | ~4m | ~4m |
 
 **Recent Trend:**
-- Last 5 plans: 09-03, 10-01, 11-01, 12-01 (~2-4m)
+- Last 5 plans: 10-01, 11-01, 12-01, 13-01 (~2-4m)
 - Trend: Stable at ~2-4m per plan
 
 *Updated after each plan completion*
@@ -133,6 +134,10 @@ Recent decisions affecting current work:
 - [12-01]: SVG import requires 3+ points, 5mm min height/width, finite coordinates
 - [12-01]: URL profile points clamped to [0, 500]mm; mould settings clamped to slider ranges
 - [12-01]: loadedFromURL flag reverses DOM sync direction for mould settings on share links
+- [13-01]: Toggle buttons use sage green active state -- differentiates from coral action buttons
+- [13-01]: .btn-primary uses sage (--success-color), generic buttons use coral (--accent-color)
+- [13-01]: Legacy CSS variable aliases retained to avoid breaking JS references
+- [13-01]: Centered editorial header layout with subtitle
 
 ### Pending Todos
 
@@ -151,6 +156,7 @@ Recent decisions affecting current work:
 - Browser validation of outer mould: cylindrical shell visible around inner mould, cavity gap slider, split count selector, visibility toggle, exploded view separation.
 - Browser validation of ring: flat washer visible below mould assembly, ring checkbox toggles it, ridge/groove features visible on split faces when zoomed in.
 - Browser validation of pour hole: circular opening through ring at Y=0, clearance slider, outer wall slider.
+- Browser validation of brand alignment: verify Josefin Sans + Inter render, hard shadows visible, header centered.
 
 ### Blockers/Concerns
 
@@ -162,5 +168,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed Phase 12 (Critical Bug Fixes). All 27 plans complete.
+Stopped at: Completed Phase 13 (Brand Alignment). All 28 plans complete.
 Resume file: None
