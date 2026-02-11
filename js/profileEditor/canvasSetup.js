@@ -22,20 +22,21 @@
  *
  * LAYERS:
  * -------
- * 0: grid     -- mm grid lines and axis reference
- * 1: profile  -- the main bezier path (the pot shape)
- * 2: handles  -- anchor points, control handles, connecting lines
- * 3: overlay  -- temporary feedback (hover highlights, selection rect)
+ * 0: reference -- reference photo overlay (below everything)
+ * 1: grid      -- mm grid lines and axis reference
+ * 2: profile   -- the main bezier path (the pot shape)
+ * 3: handles   -- anchor points, control handles, connecting lines
+ * 4: overlay   -- temporary feedback (hover highlights, selection rect)
  */
 
 /**
  * Initialize Paper.js on the given canvas element.
  *
- * Creates the paper project, sets up 4 named layers, and returns references
+ * Creates the paper project, sets up 5 named layers, and returns references
  * to the project, view, and layers for use by other editor modules.
  *
  * @param {string} canvasId - The DOM id of the <canvas> element.
- * @returns {{ project: paper.Project, view: paper.View, layers: { grid: paper.Layer, profile: paper.Layer, handles: paper.Layer, overlay: paper.Layer } }}
+ * @returns {{ project: paper.Project, view: paper.View, layers: { reference: paper.Layer, grid: paper.Layer, profile: paper.Layer, handles: paper.Layer, overlay: paper.Layer } }}
  */
 export function initCanvas(canvasId) {
   const canvas = document.getElementById(canvasId);
@@ -47,9 +48,12 @@ export function initCanvas(canvasId) {
   // paper.setup() creates a Project and View bound to this canvas.
   paper.setup(canvas);
 
-  // Paper.js creates one default layer (index 0). We rename it and create 3 more.
+  // Paper.js creates one default layer (index 0). We rename it and create 4 more.
   // Layer order matters: higher index = drawn on top.
-  const gridLayer = paper.project.activeLayer;
+  const referenceLayer = paper.project.activeLayer;
+  referenceLayer.name = 'reference';
+
+  const gridLayer = new paper.Layer();
   gridLayer.name = 'grid';
 
   const profileLayer = new paper.Layer();
@@ -65,6 +69,7 @@ export function initCanvas(canvasId) {
   profileLayer.activate();
 
   const layers = {
+    reference: referenceLayer,
     grid: gridLayer,
     profile: profileLayer,
     handles: handleLayer,

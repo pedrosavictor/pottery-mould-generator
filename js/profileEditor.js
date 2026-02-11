@@ -427,6 +427,26 @@ export function initProfileEditor(canvasId, options = {}) {
     },
 
     /**
+     * Get the named layers object (reference, grid, profile, handles, overlay).
+     * Used by reference image module to access the reference layer.
+     *
+     * @returns {{ reference: paper.Layer, grid: paper.Layer, profile: paper.Layer, handles: paper.Layer, overlay: paper.Layer }}
+     */
+    getLayers() {
+      return layers;
+    },
+
+    /**
+     * Get the current coordinate transform.
+     * Used by reference image module to position/scale the raster.
+     *
+     * @returns {{ scale: number, offsetX: number, offsetY: number, toCanvas: function, toProfile: function }}
+     */
+    getTransform() {
+      return transform;
+    },
+
+    /**
      * Enable or disable the editing tools (edit/draw).
      * When disabled, the Paper.js tools are deactivated and toolbar buttons
      * are visually disabled. Used by parametric mode to prevent direct editing.
