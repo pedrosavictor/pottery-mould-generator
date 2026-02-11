@@ -63,6 +63,8 @@
       </div>
       <div id="preview-container">
         <div id="preview-status" class="preview-status" aria-live="polite">Preview</div>
+        <div id="orbit-hint" class="orbit-hint">Drag to rotate &middot; Scroll to zoom</div>
+        <div id="preview-error" class="preview-error hidden">3D preview unavailable</div>
         <div id="wasm-loading-overlay">
           <div class="wasm-loader">
             <div class="spinner"></div>
@@ -93,25 +95,25 @@
           <div class="slider-field">
             <label for="slider-height">Height</label>
             <input type="range" id="slider-height" />
-            <span class="slider-value" id="val-height">--</span>
+            <span class="slider-value" id="val-height">90</span>
             <span class="slider-unit">mm</span>
           </div>
           <div class="slider-field">
             <label for="slider-rim-diameter">Rim diameter</label>
             <input type="range" id="slider-rim-diameter" />
-            <span class="slider-value" id="val-rim-diameter">--</span>
+            <span class="slider-value" id="val-rim-diameter">80</span>
             <span class="slider-unit">mm</span>
           </div>
           <div class="slider-field">
             <label for="slider-belly-width">Belly width</label>
             <input type="range" id="slider-belly-width" />
-            <span class="slider-value" id="val-belly-width">--</span>
+            <span class="slider-value" id="val-belly-width">78</span>
             <span class="slider-unit">mm</span>
           </div>
           <div class="slider-field">
             <label for="slider-foot-diameter">Foot diameter</label>
             <input type="range" id="slider-foot-diameter" />
-            <span class="slider-value" id="val-foot-diameter">--</span>
+            <span class="slider-value" id="val-foot-diameter">55</span>
             <span class="slider-unit">mm</span>
           </div>
         </div>
@@ -119,19 +121,19 @@
         <div id="mould-settings">
           <h3>Mould Settings</h3>
           <div class="slider-field">
-            <label for="slider-shrinkage">Shrinkage</label>
+            <label for="slider-shrinkage" title="Clay shrinks as it dries and fires. Typical range: 10-15% for most clays.">Shrinkage</label>
             <input type="range" id="slider-shrinkage" min="5" max="20" step="0.5" value="13" />
             <span class="slider-value" id="val-shrinkage">13</span>
             <span class="slider-unit">%</span>
           </div>
           <div class="slider-field">
-            <label for="slider-wall-thickness">Wall thickness</label>
+            <label for="slider-wall-thickness" title="Thickness of the mould wall shell. Thicker walls are sturdier but use more filament.">Wall thickness</label>
             <input type="range" id="slider-wall-thickness" min="1" max="5" step="0.1" value="2.4" />
             <span class="slider-value" id="val-wall-thickness">2.4</span>
             <span class="slider-unit">mm</span>
           </div>
           <div class="preset-field">
-            <label for="select-slip-well">Slip well</label>
+            <label for="select-slip-well" title="A reservoir above the mould for pouring liquid clay (slip). Regular is good for most pots.">Slip well</label>
             <select id="select-slip-well">
               <option value="none">None</option>
               <option value="regular" selected>Regular (25mm)</option>
@@ -139,7 +141,7 @@
             </select>
           </div>
           <div class="slider-field">
-            <label for="slider-cavity-gap">Plaster cavity</label>
+            <label for="slider-cavity-gap" title="Gap between inner and outer mould walls, filled with plaster to create the casting mould.">Plaster cavity</label>
             <input type="range" id="slider-cavity-gap" min="10" max="50" step="1" value="25" />
             <span class="slider-value" id="val-cavity-gap">25</span>
             <span class="slider-unit">mm</span>
@@ -152,13 +154,13 @@
             </select>
           </div>
           <div class="slider-field">
-            <label for="slider-clearance">Assembly clearance</label>
+            <label for="slider-clearance" title="Small gap between mating parts so they fit together. Too tight = stuck, too loose = sloppy.">Assembly clearance</label>
             <input type="range" id="slider-clearance" min="0.1" max="0.8" step="0.05" value="0.3" />
             <span class="slider-value" id="val-clearance">0.3</span>
             <span class="slider-unit">mm</span>
           </div>
           <div class="slider-field">
-            <label for="slider-outer-wall">Outer wall</label>
+            <label for="slider-outer-wall" title="Thickness of the outer containment shell that holds the plaster in place during casting.">Outer wall</label>
             <input type="range" id="slider-outer-wall" min="1.5" max="5" step="0.1" value="2.4" />
             <span class="slider-value" id="val-outer-wall">2.4</span>
             <span class="slider-unit">mm</span>
@@ -224,9 +226,10 @@
               <button id="btn-res-high" class="res-btn">High</button>
             </div>
           </div>
-          <button id="btn-download-zip" class="btn-primary" disabled>
+          <button id="btn-download-zip" class="btn-primary" disabled title="Available after geometry engine loads">
             Download STL (ZIP)
           </button>
+          <p id="download-hint" class="download-hint">Waiting for geometry engine...</p>
           <button id="btn-download-step" class="btn-primary" title="Download STEP files">
             Download STEP
           </button>

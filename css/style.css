@@ -318,6 +318,40 @@ main {
   pointer-events: none;
 }
 
+/* UI-10: Orbit controls hint */
+.orbit-hint {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 10;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text-light);
+  background: rgba(244, 241, 237, 0.8);
+  border-radius: var(--border-radius);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 2s ease 5s;  /* fade after 5s delay */
+}
+
+.orbit-hint.faded {
+  opacity: 0;
+}
+
+/* UI-11: 3D preview error fallback */
+.preview-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  font-size: 0.9rem;
+  color: var(--text-light);
+  background: var(--bg-color);
+  pointer-events: none;
+}
+
 aside#controls {
   flex: 1;
   min-width: 280px;
@@ -634,37 +668,36 @@ aside#controls h3 {
   margin-bottom: 0.3rem;
 }
 
+/* UI-05/UI-06: Unified toggle pattern for resolution (matches mode-toggle / view-mode-toggle) */
 .resolution-toggle {
   display: flex;
   gap: 0;
   margin-bottom: 0.5rem;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  border: 2px solid var(--text-color);
 }
 
 .res-btn {
   flex: 1;
   padding: 0.4rem 0.75rem;
-  border: 2px solid var(--text-color);
+  border: none;
   background: var(--card-bg);
   cursor: pointer;
   font-size: 0.8rem;
   font-family: var(--font-body);
   color: var(--text-color);
   transition: background-color 0.15s ease, color 0.15s ease;
+  border-radius: 0;
 }
 
-.res-btn:first-child {
-  border-radius: var(--border-radius) 0 0 var(--border-radius);
-  border-right: none;
-}
-
-.res-btn:last-child {
-  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+.res-btn:hover {
+  background-color: rgba(198, 93, 66, 0.08);
 }
 
 .res-btn.active {
   background: var(--primary-green);
   color: white;
-  border-color: var(--text-color);
 }
 
 /* ---- Primary Button (hard shadow) ---- */
@@ -700,6 +733,15 @@ aside#controls h3 {
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* UI-12: Download button disabled hint */
+.download-hint {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin: -0.25rem 0 0.5rem;
+  text-align: center;
+  font-style: italic;
 }
 
 .export-status {
@@ -1000,13 +1042,24 @@ footer p {
 
 /* ---- Buttons ---- */
 
+/* UI-07: Light global button reset (font only, not visual styling) */
+button {
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Dev tools buttons get the full hard-shadow treatment */
 #test-controls {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-button {
+#dev-tools button {
   padding: 0.6rem 1rem;
   border: 2px solid var(--text-color);
   border-radius: var(--border-radius);
@@ -1014,25 +1067,22 @@ button {
   color: white;
   font-size: 0.875rem;
   font-weight: 500;
-  font-family: var(--font-body);
-  cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   box-shadow: var(--shadow-hard-sm);
 }
 
-button:hover {
+#dev-tools button:hover {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 var(--text-color);
 }
 
-button:active {
+#dev-tools button:active {
   transform: translate(2px, 2px);
   box-shadow: 1px 1px 0 var(--text-color);
 }
 
-button:disabled {
+#dev-tools button:disabled {
   opacity: 0.5;
-  cursor: not-allowed;
   transform: none;
   box-shadow: var(--shadow-hard-sm);
 }
@@ -1110,6 +1160,12 @@ pre {
 
 .visible {
   display: block;
+}
+
+/* UI-08: Pro gating visual state (replaces inline style.opacity) */
+.pro-gated {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 /* ---- Responsive: Stack at narrow viewports ---- */

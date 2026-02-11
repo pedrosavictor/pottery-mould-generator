@@ -608,7 +608,7 @@ function gateSliderForPro(slider, label) {
   // With DEV_MODE on, isPro() returns true so gating is bypassed.
   if (!isPro() && slider) {
     slider.disabled = true;
-    slider.style.opacity = '0.4';
+    slider.classList.add('pro-gated');  // UI-08: CSS class instead of inline style
     if (label && !label.textContent.includes('(Pro)')) {
       label.textContent += ' (Pro)';
     }
@@ -1318,6 +1318,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   preview3d.initScene(container);
   log('Three.js scene initialized');
 
+  // UI-10: Fade orbit hint after 8 seconds
+  const orbitHint = document.getElementById('orbit-hint');
+  if (orbitHint) {
+    setTimeout(() => orbitHint.classList.add('faded'), 8000);
+  }
+
   // Instant 3D preview: show LatheGeometry from the initial profile
   // This renders in ~1ms -- user sees a 3D pot before WASM loads
   preview3d.updateLatheFallback(initialPoints);
@@ -1464,6 +1470,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const btnDownload = document.getElementById('btn-download-zip');
     if (btnDownload) btnDownload.disabled = false;
+    // UI-12: Hide download hint once engine is ready
+    const downloadHint = document.getElementById('download-hint');
+    if (downloadHint) downloadHint.classList.add('hidden');
 
     // Upgrade to WASM mesh: generate mould parts from current profile
     // This replaces the LatheGeometry with CAD-quality proof + inner mould.
@@ -1514,6 +1523,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       }, 2000);
     }
     showNotification('Geometry engine failed to load. Try refreshing the page.', 'error', 0);
+    // UI-11: Show error indicator in 3D preview area
+    const previewError = document.getElementById('preview-error');
+    if (previewError) previewError.classList.remove('hidden');
     // LatheGeometry preview remains visible -- degraded but usable
     log('Falling back to LatheGeometry preview (WASM unavailable)');
   }
