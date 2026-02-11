@@ -1047,6 +1047,53 @@ pre {
   border: 2px solid var(--text-color);
 }
 
+/* ---- Accessibility ---- */
+
+/* A11Y-01: Focus-visible indicators for all interactive elements */
+:focus-visible {
+  outline: 3px solid var(--text-color);
+  outline-offset: 2px;
+}
+
+/* Override custom focus styles that suppress the outline */
+.preset-field select:focus-visible,
+.dim-input-group input[type="number"]:focus-visible,
+.modal-input:focus-visible {
+  outline: 3px solid var(--text-color);
+  outline-offset: 2px;
+}
+
+/* Modal close buttons need visible focus even though they suppress box-shadow */
+.modal-close-btn:focus-visible {
+  outline: 3px solid var(--text-color);
+  outline-offset: 2px;
+}
+
+/* A11Y-05: Screen-reader-only class for visually hidden labels */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A11Y-08: Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* ---- Utility Classes ---- */
 
 .hidden {

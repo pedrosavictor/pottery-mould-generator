@@ -41,7 +41,7 @@
           <span id="user-email-display"></span>
           <span id="user-tier-badge"></span>
         </div>
-        <span id="status">Initializing...</span>
+        <span id="status" aria-live="polite">Initializing...</span>
       </div>
     </header>
 
@@ -58,23 +58,23 @@
             <input type="checkbox" id="chk-snap"> Snap
           </label>
         </div>
-        <canvas id="profile-canvas" resize></canvas>
-        <div id="constraint-status" class="constraint-status valid">Profile OK</div>
+        <canvas id="profile-canvas" resize>2D pottery profile editor. Draw and edit bezier curves to define your pot shape for mould generation.</canvas>
+        <div id="constraint-status" class="constraint-status valid" aria-live="polite">Profile OK</div>
       </div>
       <div id="preview-container">
-        <div id="preview-status" class="preview-status">Preview</div>
+        <div id="preview-status" class="preview-status" aria-live="polite">Preview</div>
         <div id="wasm-loading-overlay">
           <div class="wasm-loader">
             <div class="spinner"></div>
-            <p id="wasm-loading-text">Loading geometry engine...</p>
+            <p id="wasm-loading-text" aria-live="polite">Loading geometry engine...</p>
           </div>
         </div>
       </div>
 
       <!-- Notification bar -->
-      <div id="notification-bar" class="notification-bar hidden">
+      <div id="notification-bar" class="notification-bar hidden" aria-live="assertive" role="alert">
         <span id="notification-text"></span>
-        <button id="notification-dismiss" class="notification-dismiss" type="button">&times;</button>
+        <button id="notification-dismiss" class="notification-dismiss" type="button" aria-label="Close">&times;</button>
       </div>
 
       <aside id="controls">
@@ -239,7 +239,7 @@
           <button id="btn-share-link" class="btn-secondary modal-btn-full" type="button">
             Copy Share Link
           </button>
-          <p id="export-status" class="export-status"></p>
+          <p id="export-status" class="export-status" aria-live="polite"></p>
         </div>
 
         <div id="plaster-calculator">
@@ -321,26 +321,28 @@
     </footer>
 
     <!-- Email Gate Modal -->
-    <div id="email-modal" class="hidden">
+    <div id="email-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="modal-signup-heading">
       <div class="modal-overlay"></div>
       <div class="modal-content">
         <!-- Signup view -->
         <div id="modal-signup-view">
-          <button id="modal-close" class="modal-close-btn" type="button">&times;</button>
-          <h2>Get Your Mould Files</h2>
+          <button id="modal-close" class="modal-close-btn" type="button" aria-label="Close">&times;</button>
+          <h2 id="modal-signup-heading">Get Your Mould Files</h2>
           <p class="modal-subtitle">Enter your email to download. We'll send you pottery tips too!</p>
           <form id="email-form">
+            <label for="modal-first-name" class="sr-only">First name (optional)</label>
             <input type="text" id="modal-first-name" class="modal-input" placeholder="First name (optional)" autocomplete="given-name">
+            <label for="modal-email" class="sr-only">Email address</label>
             <input type="email" id="modal-email" class="modal-input" placeholder="Email address" required autocomplete="email">
-            <p id="email-error" class="modal-error hidden"></p>
+            <p id="email-error" class="modal-error hidden" aria-live="assertive"></p>
             <button type="submit" class="btn-primary modal-submit">Download Mould Files</button>
           </form>
           <p class="modal-privacy">We respect your privacy. Unsubscribe anytime.</p>
         </div>
         <!-- Verify view -->
         <div id="modal-verify-view" class="hidden">
-          <button id="modal-close-verify" class="modal-close-btn" type="button">&times;</button>
-          <h2>Verify Your Email</h2>
+          <button id="modal-close-verify" class="modal-close-btn" type="button" aria-label="Close">&times;</button>
+          <h2 id="modal-verify-heading">Verify Your Email</h2>
           <p>We sent a confirmation email to <strong id="verify-email-display"></strong>.</p>
           <p>Please click the link in the email, then come back here.</p>
           <button id="btn-check-verified" class="btn-primary" type="button">I've Confirmed - Check Now</button>
