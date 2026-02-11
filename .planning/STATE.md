@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 13 COMPLETE -- Brand Alignment (23 BRAND items resolved).
+**Current focus:** Phase 14 COMPLETE -- Preset Defaults & Geometry Fixes (10 GEO items resolved).
 
 ## Current Position
 
-Phase: 13 of 13 (Brand Alignment)
+Phase: 14 of 14 (Preset Defaults & Geometry Fixes)
 Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-11 -- Completed Phase 13 (BRAND-01 through BRAND-23)
+Last activity: 2026-02-11 -- Completed Phase 14 (GEO-01 through GEO-10)
 
-Progress: [████████████████████████████] 100% (28/28 plans)
+Progress: [█████████████████████████████] 100% (29/29 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 28
+- Total plans completed: 29
 - Average duration: ~2.9 minutes
-- Total execution time: ~65 minutes
+- Total execution time: ~70 minutes
 
 **By Phase:**
 
@@ -40,10 +40,11 @@ Progress: [███████████████████████
 | 11. Unblock Development | 1/1 | ~2m | ~2m |
 | 12. Critical Bug Fixes | 1/1 | ~4m | ~4m |
 | 13. Brand Alignment | 1/1 | ~4m | ~4m |
+| 14. Preset Defaults & Geometry Fixes | 1/1 | ~5m | ~5m |
 
 **Recent Trend:**
-- Last 5 plans: 10-01, 11-01, 12-01, 13-01 (~2-4m)
-- Trend: Stable at ~2-4m per plan
+- Last 5 plans: 11-01, 12-01, 13-01, 14-01 (~2-5m)
+- Trend: Stable at ~2-5m per plan
 
 *Updated after each plan completion*
 
@@ -118,7 +119,7 @@ Recent decisions affecting current work:
 - [06-01]: splitSolid() uses makeBox boolean cuts at Y=0 and X=0 planes -- reusable for ring splitting
 - [06-01]: Prefix-based part management (startsWith) for outer-* and ring-* parts
 - [06-01]: removePartsByPrefix cleans up old pieces before adding new ones on split count change
-- [06-02]: Ring is a flat annular disc (washer) spanning inner mould outer radius + 0.5mm to outer mould inner radius
+- [06-02]: Ring is a flat annular disc (washer) spanning inner mould outer radius + clearance to outer mould inner radius
 - [06-02]: Ridge/groove features only on Y=0 split plane for v1 (X=0 plane deferred)
 - [06-02]: Ridges on front/q1/q3, grooves on back/q2/q4 -- consistent convention
 - [06-02]: Assembly features: 2mm radius ridges fused, 2.3mm grooves cut (0.3mm clearance)
@@ -138,6 +139,13 @@ Recent decisions affecting current work:
 - [13-01]: .btn-primary uses sage (--success-color), generic buttons use coral (--accent-color)
 - [13-01]: Legacy CSS variable aliases retained to avoid breaking JS references
 - [13-01]: Centered editorial header layout with subtitle
+- [14-01]: Cup/bowl belly defaults reduced below rim to eliminate undercuts
+- [14-01]: Bowl curve multiplier 1.02 -> 1.00 to prevent amplified undercut
+- [14-01]: Slider belly max clamped to rim max for cup/bowl/tumbler (vase exempt)
+- [14-01]: warnIfUndercut() added at generation time (logs warning, does not block)
+- [14-01]: Ring top aligned with shelled inner mould bottom (bottomZ - wallThickness)
+- [14-01]: Ring clearance uses params.clearance instead of hardcoded 0.5mm
+- [14-01]: Cavity volume uses shelled (hollow) mould volume, not solid
 
 ### Pending Todos
 
@@ -157,6 +165,7 @@ Recent decisions affecting current work:
 - Browser validation of ring: flat washer visible below mould assembly, ring checkbox toggles it, ridge/groove features visible on split faces when zoomed in.
 - Browser validation of pour hole: circular opening through ring at Y=0, clearance slider, outer wall slider.
 - Browser validation of brand alignment: verify Josefin Sans + Inter render, hard shadows visible, header centered.
+- Browser validation of preset fixes: cup and bowl should not show undercut warnings in console.
 
 ### Blockers/Concerns
 
@@ -164,9 +173,10 @@ Recent decisions affecting current work:
 - [Phase 1]: If replicad.js has internal bare specifier imports, CDN loading will fail. Fallback: esm.sh, self-hosted bundle, or Vite worker build.
 - [Phase 2]: Handle mapping (profile cp1/cp2 <-> Paper.js handleIn/handleOut) is complex and most likely source of visual bugs -- needs browser validation.
 - [Phase 6]: Ridge/groove dimensions and clearance values need physical test prints to validate -- cannot be determined from research alone
+- [Phase 14]: Ring Z-alignment change may affect visual appearance in exploded view -- verify inner mould sits flush on ring
 
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed Phase 13 (Brand Alignment). All 28 plans complete.
+Stopped at: Completed Phase 14 (Preset Defaults & Geometry Fixes). All 29 plans complete.
 Resume file: None
