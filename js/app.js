@@ -8,18 +8,21 @@
  *   4. Auto-revolve test profile on load
  *   5. Wire editor onChange -> geometry bridge -> 3D preview
  *
- * DATA FLOW:
- * ----------
+ * DATA FLOW (dual-path):
+ * ----------------------
  *   Profile Editor (Paper.js)
  *     -> onChange(profilePoints)
- *       -> geometryBridge.generateWithCancellation(points)
+ *       -> preview3d.updateLatheFallback(points)          [INSTANT ~1ms]
+ *       -> geometryBridge.generateWithCancellation(points) [ASYNC 50-500ms]
  *         -> Web Worker postMessage
  *           -> replicad draw() -> revolve() -> mesh()
  *           -> Float32Array/Uint32Array via Transferable
  *         -> main thread receives mesh data (or null if stale)
- *       -> preview3d.updateMesh(meshData)
+ *       -> preview3d.updateMesh(meshData)                  [replaces lathe]
  *         -> Three.js BufferGeometry -> render
  *
+ * The LatheGeometry path provides instant visual feedback before WASM loads
+ * and during WASM computation. The WASM path replaces it with higher quality.
  * All WASM operations run in the Web Worker. The main thread stays responsive.
  * The profile editor uses latest-wins cancellation so rapid edits don't queue.
  */
@@ -43,6 +46,7 @@ let loadingIndicator = null;
 let loadingText = null;
 let testControls = null;
 let memoryResults = null;
+let previewStatusEl = null;
 
 /** @type {{ getProfileData: function, setProfileData: function, setToolsEnabled: function }|null} */
 let profileEditor = null;
@@ -82,14 +86,24 @@ function log(msg) {
 /**
  * Handle profile changes from the 2D editor.
  *
- * Uses generateWithCancellation() so rapid edits (e.g., dragging a handle)
- * only render the latest result. Stale results are silently discarded.
+ * Dual-path update:
+ *   1. Instant: update LatheGeometry preview (~1ms, synchronous)
+ *   2. Async: trigger WASM generation (50-500ms, cancellable)
+ *
+ * If WASM is not ready (still loading), only the LatheGeometry path runs.
+ * When WASM result arrives, it replaces the LatheGeometry mesh.
  *
  * @param {Array<ProfilePoint>} profilePoints - Updated profile points from editor.
  */
 async function onProfileChange(profilePoints) {
-  if (!geometryBridge.isReady()) return;
   if (!profilePoints || profilePoints.length < 2) return;
+
+  // Instant LatheGeometry update (always available, no WASM dependency)
+  preview3d.updateLatheFallback(profilePoints);
+  updatePreviewStatus('Preview');
+
+  // If WASM not ready, LatheGeometry is all we show
+  if (!geometryBridge.isReady()) return;
 
   try {
     const result = await geometryBridge.generateWithCancellation(profilePoints);
@@ -100,11 +114,22 @@ async function onProfileChange(profilePoints) {
 
     const vertexCount = result.vertices.length / 3;
     const triangleCount = result.triangles.length / 3;
+    updatePreviewStatus(`CAD -- ${vertexCount} verts, ${triangleCount} tris`);
     if (statusEl) {
       statusEl.textContent = `Ready -- ${vertexCount} verts, ${triangleCount} tris`;
     }
   } catch (err) {
     console.warn('[app] Profile change revolve error:', err.message);
+  }
+}
+
+/**
+ * Update the preview status indicator text.
+ * @param {string} text - Status text to display.
+ */
+function updatePreviewStatus(text) {
+  if (previewStatusEl) {
+    previewStatusEl.textContent = text;
   }
 }
 
@@ -484,6 +509,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadingText = document.getElementById('loading-text');
   testControls = document.getElementById('test-controls');
   memoryResults = document.getElementById('memory-results');
+  previewStatusEl = document.getElementById('preview-status');
 
   const container = document.getElementById('preview-container');
 
@@ -521,11 +547,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   preview3d.initScene(container);
   log('Three.js scene initialized');
 
+  // Instant 3D preview: show LatheGeometry from the initial profile
+  // This renders in ~1ms -- user sees a 3D pot before WASM loads
+  preview3d.updateLatheFallback(initialPoints);
+  updatePreviewStatus('Preview');
+  log('Instant LatheGeometry preview shown');
+
   // Wire up buttons
   document.getElementById('btn-revolve').addEventListener('click', doRevolve);
   document.getElementById('btn-memory-test').addEventListener('click', doMemoryTest);
   document.getElementById('btn-clear').addEventListener('click', () => {
     preview3d.clearMesh();
+    updatePreviewStatus('No mesh');
     log('Mesh cleared');
     if (statusEl) statusEl.textContent = 'Ready (no mesh)';
   });
@@ -553,12 +586,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       testControls.classList.remove('hidden');
     }
 
-    // Auto-revolve the test profile on load
-    await doRevolve();
+    // Upgrade to WASM mesh: revolve the current profile (replaces LatheGeometry)
+    // Use the same onProfileChange flow so it goes through the dual-path pipeline.
+    try {
+      const result = await geometryBridge.generateWithCancellation(initialPoints);
+      if (result) {
+        preview3d.updateMesh(result);
+        const vertexCount = result.vertices.length / 3;
+        const triangleCount = result.triangles.length / 3;
+        updatePreviewStatus(`CAD -- ${vertexCount} verts, ${triangleCount} tris`);
+        log(`WASM mesh upgrade: ${vertexCount} verts, ${triangleCount} tris`);
+      }
+    } catch (upgradeErr) {
+      console.warn('[app] WASM mesh upgrade failed (LatheGeometry still showing):', upgradeErr.message);
+    }
   } catch (err) {
     log(`INIT ERROR: ${err.message}`);
     if (err.stack) log(err.stack);
     if (statusEl) statusEl.textContent = 'ERROR: ' + err.message;
     if (loadingText) loadingText.textContent = 'Failed to load geometry engine';
+    // LatheGeometry preview remains visible -- degraded but usable
+    log('Falling back to LatheGeometry preview (WASM unavailable)');
   }
 });
