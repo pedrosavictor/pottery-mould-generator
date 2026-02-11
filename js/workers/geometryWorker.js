@@ -40,11 +40,19 @@ import { withCleanup, getHeapSize } from './memoryTracker.js';
 /**
  * Safely extract an error message from any thrown value.
  * OpenCASCADE/WASM may throw strings, numbers, or objects without .message.
+ * Raw WASM exceptions often surface as numeric heap pointers (e.g., 45272688)
+ * which are not useful to the user.
  * @param {*} err - The caught error value.
  * @returns {string} Human-readable error message.
  */
 function safeErrorMessage(err) {
-  return err?.message || String(err);
+  if (err?.message) return err.message;
+  const str = String(err);
+  // Detect WASM heap pointers (large integers) and replace with generic message
+  if (/^\d{5,}$/.test(str)) {
+    return 'OpenCASCADE kernel error (geometry too complex or invalid)';
+  }
+  return str;
 }
 
 // ============================================================
@@ -667,6 +675,55 @@ function addAssemblyFeatures(pieces, partPrefix, bottomZ, topZ, innerRadius, out
 }
 
 /**
+ * Fallback inner mould generation: offset profile radially, revolve, subtract original.
+ *
+ * When shell() fails (common with complex/SVG-imported profiles), this approach:
+ * 1. Creates an outer solid by revolving the profile with X += wallThickness
+ * 2. Subtracts the original inner solid to leave only the wall
+ * 3. Cuts the top rim disc off to create the mould opening
+ *
+ * Less precise than shell() (radial vs normal offset) but much more robust.
+ *
+ * @param {Array} mouldProfile - Profile points (with slip well if present).
+ * @param {Object} mouldSolid - Already-revolved inner solid (from buildAndRevolve).
+ * @param {number} wallThickness - Wall thickness in mm.
+ * @param {number} topZ - Z coordinate of the top of the mould.
+ * @param {Function} track - The withCleanup track function.
+ * @returns {Object} The hollow mould solid (caller must track for cleanup).
+ */
+function buildMouldBySubtraction(mouldProfile, mouldSolid, wallThickness, topZ, track) {
+  // Create offset profile: each X coordinate increased by wallThickness
+  const offsetProfile = mouldProfile.map(pt => {
+    const offset = {
+      x: pt.x + wallThickness,
+      y: pt.y,
+      type: pt.type,
+    };
+    if (pt.cp1) offset.cp1 = { x: pt.cp1.x + wallThickness, y: pt.cp1.y };
+    if (pt.cp2) offset.cp2 = { x: pt.cp2.x + wallThickness, y: pt.cp2.y };
+    return offset;
+  });
+
+  // Revolve offset profile to create the outer solid
+  const outerSolid = track(buildAndRevolve(offsetProfile));
+
+  // Subtract inner from outer to get hollow wall
+  let hollow = track(outerSolid.cut(mouldSolid));
+
+  // Cut the top rim disc to create the mould opening.
+  // The disc is at topZ, thickness = wallThickness.
+  // Use a cylinder slightly larger than the max radius to ensure clean cut.
+  const maxR = Math.max(...mouldProfile.map(p => p.x)) + wallThickness + 5;
+  const cutThickness = wallThickness + 2;
+  const topCutter = track(
+    makeCylinder(maxR, cutThickness, [0, 0, topZ - cutThickness + 0.5], [0, 0, 1])
+  );
+  hollow = track(hollow.cut(topCutter));
+
+  return hollow;
+}
+
+/**
  * Generate mould parts (proof model + inner mould) from a profile.
  *
  * The proof model is the original profile revolved at fired dimensions.
@@ -728,13 +785,19 @@ function generateMouldParts(profilePoints, mouldParams) {
         mouldSolid.shell(-wallThickness, (f) => f.inPlane('XY', topZ))
       );
     } catch (shellErr) {
-      // Shell failed -- return an error indicator alongside the proof model
-      // so the app can show a meaningful error instead of crashing
-      console.warn('[worker] Shell operation failed:', safeErrorMessage(shellErr));
-      results['inner-mould-error'] = {
-        message: `Shell operation failed: ${safeErrorMessage(shellErr)}. Try reducing wall thickness or simplifying the profile.`,
-      };
-      return results; // Returns proof but no inner-mould mesh
+      // Shell failed -- try offset-and-subtract fallback.
+      // This creates the mould by revolving an offset profile and subtracting
+      // the original, which is more robust for complex/SVG-imported profiles.
+      console.warn('[worker] Shell failed, trying offset-subtract fallback:', safeErrorMessage(shellErr));
+      try {
+        shelledMould = track(buildMouldBySubtraction(mouldProfile, mouldSolid, wallThickness, topZ, track));
+      } catch (fallbackErr) {
+        console.warn('[worker] Fallback also failed:', safeErrorMessage(fallbackErr));
+        results['inner-mould-error'] = {
+          message: `Inner mould generation failed: ${safeErrorMessage(fallbackErr)}. Try simplifying the profile.`,
+        };
+        return results;
+      }
     }
     results['inner-mould'] = toTransferableMesh(shelledMould.mesh(meshOpts));
 

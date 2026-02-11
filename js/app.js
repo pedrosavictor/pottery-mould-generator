@@ -227,9 +227,10 @@ async function onProfileChange(profilePoints) {
       console.warn('[app] Ring error:', mouldResult['ring-error'].message);
     }
 
-    // Handle shell failure gracefully
+    // Handle shell failure: clear stale inner-mould so old geometry doesn't persist
     if (mouldResult['inner-mould-error']) {
       console.warn('[app] Inner mould error:', mouldResult['inner-mould-error'].message);
+      preview3d.removePartsByPrefix('inner-mould');
       if (statusEl) {
         statusEl.textContent = 'Mould warning -- ' + mouldResult['inner-mould-error'].message;
       }

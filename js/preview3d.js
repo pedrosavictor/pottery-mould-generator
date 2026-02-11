@@ -418,18 +418,7 @@ export function updatePartMesh(partName, meshData) {
 
   // WASM geometry uses Z-up (revolved on XZ plane around Z axis).
   // Three.js uses Y-up. Rotate -90 deg around X to convert.
-  // Mould parts (inner, outer, ring) are additionally flipped 180 deg (inverted)
-  // to show them as assembled for plaster pouring (foot up, rim down).
-  const isMouldPart = partName.startsWith('inner-mould') ||
-                      partName.startsWith('outer-') ||
-                      partName.startsWith('ring-');
-  if (isMouldPart) {
-    // Z-up to Y-up (-90deg) + invert (+180deg) = +90deg total
-    group.rotation.x = Math.PI / 2;
-  } else {
-    // Pot and proof: Z-up to Y-up only
-    group.rotation.x = -Math.PI / 2;
-  }
+  group.rotation.x = -Math.PI / 2;
 
   scene.add(group);
 
