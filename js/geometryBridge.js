@@ -189,6 +189,43 @@ export function revolveProfile(profilePoints) {
 }
 
 /**
+ * Generate mould parts (inner mould + proof model) from a profile.
+ *
+ * Sends profile points and mould parameters to the worker, which
+ * generates both the proof model (fired pot dimensions) and the
+ * inner mould (scaled for shrinkage, shelled for wall thickness).
+ *
+ * @param {Array<ProfilePoint>} profilePoints - Profile points from foot to rim.
+ * @param {{ shrinkageRate?: number, wallThickness?: number, slipWellType?: string }} mouldParams
+ * @returns {Promise<{ proof: MeshData, 'inner-mould': MeshData }>}
+ */
+export function generateMould(profilePoints, mouldParams) {
+  return sendCommand('generateMould', { profilePoints, mouldParams });
+}
+
+/**
+ * Generate mould parts with latest-wins cancellation.
+ *
+ * Same as generateMould but uses the generation counter to discard
+ * stale results. Returns null if a newer request has been made.
+ *
+ * Note: This shares the currentGenerationId counter with
+ * generateWithCancellation, which is correct -- if a new profile
+ * edit arrives, both old revolve and old mould generation should
+ * be discarded.
+ *
+ * @param {Array<ProfilePoint>} profilePoints
+ * @param {{ shrinkageRate?: number, wallThickness?: number, slipWellType?: string }} mouldParams
+ * @returns {Promise<{ proof: MeshData, 'inner-mould': MeshData }|null>}
+ */
+export async function generateMouldWithCancellation(profilePoints, mouldParams) {
+  const myId = ++currentGenerationId;
+  const result = await generateMould(profilePoints, mouldParams);
+  if (myId !== currentGenerationId) return null;
+  return result;
+}
+
+/**
  * Revolve a profile with latest-wins cancellation.
  *
  * If called again before the previous call completes, the previous result

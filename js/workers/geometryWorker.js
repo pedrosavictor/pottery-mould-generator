@@ -49,6 +49,7 @@ const WASM_CDN = 'https://cdn.jsdelivr.net/npm/replicad-opencascadejs@0.20.2/src
 // ============================================================
 let draw = null;
 let setOC = null;
+let FaceFinder = null;
 let opencascade = null;
 
 // ============================================================
@@ -81,6 +82,7 @@ async function initialize() {
 
     draw = replicadModule.draw;
     setOC = replicadModule.setOC;
+    FaceFinder = replicadModule.FaceFinder;
     opencascade = ocModule.default || ocModule;
 
     // Phase 2: Initialize WASM (downloads and compiles ~10.3 MB binary)
@@ -131,6 +133,21 @@ self.onmessage = async (e) => {
         break;
       }
 
+      case 'generateMould': {
+        await initialize();
+        const partsData = generateMouldParts(params.profilePoints, params.mouldParams);
+
+        // Collect all ArrayBuffers for Transferable zero-copy handoff
+        const transferList = [];
+        for (const partName of Object.keys(partsData)) {
+          const part = partsData[partName];
+          transferList.push(part.vertices.buffer, part.normals.buffer, part.triangles.buffer);
+        }
+
+        self.postMessage({ id, data: partsData }, transferList);
+        break;
+      }
+
       case 'heapSize': {
         // Return current WASM heap size for memory monitoring.
         // Returns null if WASM has not been initialized yet.
@@ -156,7 +173,7 @@ self.onmessage = async (e) => {
       default: {
         self.postMessage({
           id,
-          error: `Unknown command: "${type}". Supported commands: init, revolve, heapSize, memoryTest`,
+          error: `Unknown command: "${type}". Supported commands: init, revolve, generateMould, heapSize, memoryTest`,
         });
       }
     }
@@ -169,7 +186,150 @@ self.onmessage = async (e) => {
 };
 
 // ============================================================
-// revolveProfile -- core geometry operation
+// Geometry Helpers
+// ============================================================
+
+/**
+ * Scale profile points to compensate for clay shrinkage.
+ *
+ * Pottery clay shrinks during drying and firing. The mould must be larger
+ * than the desired finished size so the fired pot matches the design.
+ *
+ * Formula: wet_size = fired_size / (1 - shrinkage_rate)
+ * For 13% shrinkage: 1 / 0.87 = 1.1494 (mould is ~15% larger)
+ *
+ * @param {Array<{x: number, y: number, type: string, cp1?: {x: number, y: number}, cp2?: {x: number, y: number}}>} points
+ * @param {number} shrinkageRate - Shrinkage fraction (e.g., 0.13 for 13%).
+ * @returns {Array} New points array with all coordinates scaled.
+ */
+function scaleProfileForShrinkage(points, shrinkageRate) {
+  const scaleFactor = 1 / (1 - shrinkageRate);
+  return points.map((pt) => {
+    const scaled = {
+      x: pt.x * scaleFactor,
+      y: pt.y * scaleFactor,
+      type: pt.type,
+    };
+    if (pt.cp1) {
+      scaled.cp1 = { x: pt.cp1.x * scaleFactor, y: pt.cp1.y * scaleFactor };
+    }
+    if (pt.cp2) {
+      scaled.cp2 = { x: pt.cp2.x * scaleFactor, y: pt.cp2.y * scaleFactor };
+    }
+    return scaled;
+  });
+}
+
+/**
+ * Build a 2D drawing from profile points and revolve into a 3D solid.
+ *
+ * The profile is closed back to the revolution axis (x=0) and revolved
+ * 360 degrees on the XZ plane around the Z axis.
+ *
+ * IMPORTANT: The returned shape is a WASM object that must be .delete()'d.
+ * The caller must pass it to track() when using withCleanup().
+ *
+ * @param {Array<{x: number, y: number, type: string, cp1?: {x: number, y: number}, cp2?: {x: number, y: number}}>} points
+ * @returns {Object} The revolved replicad shape (caller must track for cleanup).
+ */
+function buildAndRevolve(points) {
+  // Build 2D drawing from profile points.
+  let pen = draw([points[0].x, points[0].y]);
+
+  for (let i = 1; i < points.length; i++) {
+    const pt = points[i];
+    if (pt.type === 'bezier' && pt.cp1 && pt.cp2) {
+      pen = pen.cubicBezierCurveTo(
+        [pt.x, pt.y],
+        [pt.cp1.x, pt.cp1.y],
+        [pt.cp2.x, pt.cp2.y]
+      );
+    } else {
+      pen = pen.lineTo([pt.x, pt.y]);
+    }
+  }
+
+  // Close profile back to revolution axis.
+  const lastPoint = points[points.length - 1];
+  const firstPoint = points[0];
+  pen = pen.lineTo([0, lastPoint.y]);
+  pen = pen.lineTo([0, firstPoint.y]);
+  const drawing = pen.close();
+
+  // Place on XZ plane and revolve around Z axis.
+  return drawing.sketchOnPlane('XZ').revolve();
+}
+
+/**
+ * Convert replicad mesh data to Transferable typed arrays.
+ *
+ * shape.mesh() returns plain JS arrays. This function copies them into
+ * independent typed arrays suitable for zero-copy postMessage transfer.
+ *
+ * @param {{ vertices: number[], normals: number[], triangles: number[] }} meshData
+ * @returns {{ vertices: Float32Array, normals: Float32Array, triangles: Uint32Array }}
+ */
+function toTransferableMesh(meshData) {
+  return {
+    vertices: new Float32Array(meshData.vertices),
+    normals: new Float32Array(meshData.normals),
+    triangles: new Uint32Array(meshData.triangles),
+  };
+}
+
+/**
+ * Generate mould parts (proof model + inner mould) from a profile.
+ *
+ * The proof model is the original profile revolved at fired dimensions.
+ * The inner mould is:
+ *   1. Profile scaled up by shrinkage factor (wet size > fired size)
+ *   2. Revolved into a solid
+ *   3. Shelled with NEGATIVE wall thickness (wall grows outward)
+ *   4. Top face (rim plane) removed by FaceFinder.inPlane("XY", topZ)
+ *
+ * @param {Array<{x: number, y: number, type: string, cp1?: {x: number, y: number}, cp2?: {x: number, y: number}}>} profilePoints
+ * @param {{ shrinkageRate?: number, wallThickness?: number, slipWellType?: string }} mouldParams
+ * @returns {{ proof: { vertices: Float32Array, normals: Float32Array, triangles: Uint32Array }, 'inner-mould': { vertices: Float32Array, normals: Float32Array, triangles: Uint32Array } }}
+ */
+function generateMouldParts(profilePoints, mouldParams) {
+  const {
+    shrinkageRate = 0.13,
+    wallThickness = 2.4,
+    slipWellType = 'none',
+  } = mouldParams || {};
+
+  const meshOpts = { tolerance: 0.1, angularTolerance: 0.3 };
+  const results = {};
+
+  return withCleanup((track) => {
+    // Proof model: original profile at fired dimensions
+    const proofShape = track(buildAndRevolve(profilePoints));
+    results.proof = toTransferableMesh(proofShape.mesh(meshOpts));
+
+    // Inner mould: shrinkage-scaled profile, revolved, then shelled
+    const scaledPoints = scaleProfileForShrinkage(profilePoints, shrinkageRate);
+    const mouldSolid = track(buildAndRevolve(scaledPoints));
+
+    // Top Z coordinate = rim height of scaled profile.
+    // Since the worker revolves on the XZ plane around the Z axis,
+    // the profile's Y coordinate maps to the 3D Z axis.
+    // The last point's Y (after scaling) is the rim height.
+    const topZ = scaledPoints[scaledPoints.length - 1].y;
+
+    // Shell with NEGATIVE thickness: wall grows OUTWARD from pot surface.
+    // FaceFinder.inPlane("XY", topZ) selects the flat top face (rim plane)
+    // to leave open, creating the mould opening.
+    const shelledMould = track(
+      mouldSolid.shell(-wallThickness, (f) => f.inPlane('XY', topZ))
+    );
+    results['inner-mould'] = toTransferableMesh(shelledMould.mesh(meshOpts));
+
+    return results;
+  });
+}
+
+// ============================================================
+// revolveProfile -- core geometry operation (backward compatible)
 // ============================================================
 
 /**
@@ -196,65 +356,8 @@ function revolveProfile(points) {
   }
 
   return withCleanup((track) => {
-    // Step 1: Build 2D drawing from profile points.
-    // draw() takes the starting point as [x, y].
-    let pen = draw([points[0].x, points[0].y]);
-
-    for (let i = 1; i < points.length; i++) {
-      const pt = points[i];
-      if (pt.type === 'bezier' && pt.cp1 && pt.cp2) {
-        // cubicBezierCurveTo(endPoint, startControlPoint, endControlPoint)
-        // Each argument is [x, y].
-        pen = pen.cubicBezierCurveTo(
-          [pt.x, pt.y],
-          [pt.cp1.x, pt.cp1.y],
-          [pt.cp2.x, pt.cp2.y]
-        );
-      } else {
-        // Default: straight line segment
-        pen = pen.lineTo([pt.x, pt.y]);
-      }
-    }
-
-    // Step 2: Close the profile back to the revolution axis.
-    // Draw from the last profile point to the axis (x=0) at the same height,
-    // then down the axis to the starting height, then close.
-    const lastPoint = points[points.length - 1];
-    const firstPoint = points[0];
-
-    pen = pen.lineTo([0, lastPoint.y]);  // Horizontal line to axis at top
-    pen = pen.lineTo([0, firstPoint.y]); // Vertical line down the axis
-
-    const drawing = pen.close();
-
-    // Step 3: Place drawing on XZ plane and revolve around Z axis.
-    // sketchOnPlane("XZ") maps drawing X -> 3D X, drawing Y -> 3D Z.
-    // revolve() defaults to 360-degree revolution around the Z axis.
-    // This produces a solid of revolution symmetric around the Z axis,
-    // which is what we want for pottery (axis = center of pot).
-    const shape = track(drawing.sketchOnPlane('XZ').revolve());
-
-    // Step 4: Extract mesh data for Three.js rendering.
-    // tolerance: linear deflection (mm) -- lower = more triangles, smoother
-    // angularTolerance: angular deflection (radians) -- lower = smoother curves
-    const meshData = shape.mesh({ tolerance: 0.1, angularTolerance: 0.3 });
-
-    // Step 5: Convert mesh data to typed arrays.
-    // Based on research, shape.mesh() returns plain JS arrays (number[]).
-    // Float32Array for vertices/normals, Uint32Array for triangle indices.
-    // These typed arrays enable Transferable zero-copy postMessage transfer.
-    const vertices = new Float32Array(meshData.vertices);
-    const normals = new Float32Array(meshData.normals);
-    const triangles = new Uint32Array(meshData.triangles);
-
-    // Step 6: WASM memory is freed automatically by withCleanup.
-    // The track(shape) call above registered the shape for cleanup.
-    // shape.delete() will be called in the finally block of withCleanup,
-    // releasing the OCCT BRep shape from the WASM heap.
-    // Intermediate objects (pen, drawing, sketch) are consumed by
-    // their downstream operations and do not need manual deletion.
-
-    return { vertices, normals, triangles };
+    const shape = track(buildAndRevolve(points));
+    return toTransferableMesh(shape.mesh({ tolerance: 0.1, angularTolerance: 0.3 }));
   });
 }
 
