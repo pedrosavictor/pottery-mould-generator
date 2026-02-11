@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 10 COMPLETE -- Console Bug Fixes (1/1 plans done). All phases complete.
+**Current focus:** Phase 11 COMPLETE -- Unblock Development (1/1 plans done). DEV_MODE enabled.
 
 ## Current Position
 
-Phase: 10 of 10 (Console Bug Fixes)
+Phase: 11 of 11 (Unblock Development)
 Plan: 1 of 1 in current phase
-Status: All phases complete
-Last activity: 2026-02-11 -- Completed 10-01-PLAN.md (annular revolution fix, scene init ordering, safe error messages)
+Status: Phase complete
+Last activity: 2026-02-11 -- Completed 11-01 (DEV_MODE flag bypasses all Pro/email/subscription gating)
 
-Progress: [█████████████████████████] 100% (25/25 plans)
+Progress: [██████████████████████████] 100% (26/26 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 25
-- Average duration: ~3.0 minutes
-- Total execution time: ~54.8 minutes
+- Total plans completed: 26
+- Average duration: ~2.9 minutes
+- Total execution time: ~56.8 minutes
 
 **By Phase:**
 
@@ -37,9 +37,10 @@ Progress: [███████████████████████
 | 8. Freemium + Auth | 2/2 | -- | -- |
 | 9. Branding + Polish | 3/3 | -- | -- |
 | 10. Console Bug Fixes | 1/1 | ~2m | ~2m |
+| 11. Unblock Development | 1/1 | ~2m | ~2m |
 
 **Recent Trend:**
-- Last 5 plans: 09-01, 09-02, 09-03, 10-01 (~2m)
+- Last 5 plans: 09-02, 09-03, 10-01, 11-01 (~2m)
 - Trend: Stable at ~1.5-3m per plan
 
 *Updated after each plan completion*
@@ -125,6 +126,7 @@ Recent decisions affecting current work:
 - [10-01]: revolveClosedProfile() closes profile directly (pen.close) for annular shapes -- no axis detour
 - [10-01]: safeErrorMessage() helper centralizes WASM error extraction across all catch blocks
 - [10-01]: Scene init moved before parametric controls to prevent premature onProfileChange
+- [11-01]: DEV_MODE=true in authState.js bypasses all Pro/email/subscription gating for development
 
 ### Pending Todos
 
@@ -154,5 +156,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed 10-01-PLAN.md (console bug fixes). All 25 plans complete.
+Stopped at: Completed 11-01 (Unblock Development). All 26 plans complete.
 Resume file: None
