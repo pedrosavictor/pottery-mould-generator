@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 5 COMPLETE -- Inner Mould Generation (2/2 plans done). Next: Phase 6 (Outer Mould, Ring, and Assembly).
+**Current focus:** Phase 6 IN PROGRESS -- Outer Mould, Ring, and Assembly (1/3 plans done). Next: 06-02 (Ring Generation).
 
 ## Current Position
 
-Phase: 5 of 9 (Inner Mould Generation)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-11 -- Completed 05-02-PLAN.md (slip well + mould settings UI)
+Phase: 6 of 9 (Outer Mould, Ring, and Assembly)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-11 -- Completed 06-01-PLAN.md (outer mould generation + splitting)
 
-Progress: [█████████████░░░░░░░░░░░░] 54% (13/24 plans)
+Progress: [██████████████░░░░░░░░░░░] 58% (14/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: ~3.5 minutes
-- Total execution time: ~45.8 minutes
+- Total execution time: ~48.8 minutes
 
 **By Phase:**
 
@@ -32,9 +32,10 @@ Progress: [█████████████░░░░░░░░░░
 | 3. Profile Editor Extended | 2/2 | ~7m | ~3.5m |
 | 4. Live 3D Preview | 3/3 | ~7.3m | ~2.4m |
 | 5. Inner Mould Generation | 2/2 | ~6.5m | ~3.25m |
+| 6. Outer Mould, Ring, Assembly | 1/3 | ~3m | ~3m |
 
 **Recent Trend:**
-- Last 5 plans: 04-02 (~1.3m), 04-03 (~2.5m), 05-01 (~4m), 05-02 (~2.5m)
+- Last 5 plans: 04-03 (~2.5m), 05-01 (~4m), 05-02 (~2.5m), 06-01 (~3m)
 - Trend: Stable at ~2.5-4m per plan
 
 *Updated after each plan completion*
@@ -106,6 +107,10 @@ Recent decisions affecting current work:
 - [05-02]: Slip well is a 2D profile extension (3 line points) rather than a boolean fuse of two solids
 - [05-02]: Default slip well is 'regular' (25mm) matching HTML select default
 - [05-02]: Shell failures return error indicator alongside proof model rather than throwing
+- [06-01]: Outer mould is a uniform-radius cylindrical shell (not profile-following) for easy clamping
+- [06-01]: splitSolid() uses makeBox boolean cuts at Y=0 and X=0 planes -- reusable for ring splitting
+- [06-01]: Prefix-based part management (startsWith) for outer-* and ring-* parts
+- [06-01]: removePartsByPrefix cleans up old pieces before adding new ones on split count change
 
 ### Pending Todos
 
@@ -121,6 +126,7 @@ Recent decisions affecting current work:
 - Browser validation of view controls toggle interaction and measurement label readability.
 - Browser validation of mould generation: inner mould should be visibly larger than proof, distinct materials.
 - Browser validation of mould settings: shrinkage slider, wall thickness slider, slip well selector all trigger regeneration.
+- Browser validation of outer mould: cylindrical shell visible around inner mould, cavity gap slider, split count selector, visibility toggle, exploded view separation.
 
 ### Blockers/Concerns
 
@@ -132,5 +138,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed 05-02-PLAN.md (slip well + mould settings UI) -- Phase 5 complete
+Stopped at: Completed 06-01-PLAN.md (outer mould generation + splitting)
 Resume file: None
