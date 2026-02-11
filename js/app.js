@@ -1235,6 +1235,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     log(`EDITOR ERROR: ${err.message}`);
   }
 
+  // Initialize Three.js scene (immediate -- no async needed)
+  preview3d.initScene(container);
+  log('Three.js scene initialized');
+
+  // Instant 3D preview: show LatheGeometry from the initial profile
+  // This renders in ~1ms -- user sees a 3D pot before WASM loads
+  preview3d.updateLatheFallback(initialPoints);
+  lastProfilePoints = initialPoints;
+  updatePreviewStatus('Preview');
+  log('Instant LatheGeometry preview shown');
+
   // Initialize parametric controls (mode toggle, preset selector, sliders)
   initParametricControls();
 
@@ -1285,17 +1296,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // --- Reference image wiring ---
   initReferenceImage();
-
-  // Initialize Three.js scene (immediate -- no async needed)
-  preview3d.initScene(container);
-  log('Three.js scene initialized');
-
-  // Instant 3D preview: show LatheGeometry from the initial profile
-  // This renders in ~1ms -- user sees a 3D pot before WASM loads
-  preview3d.updateLatheFallback(initialPoints);
-  lastProfilePoints = initialPoints;
-  updatePreviewStatus('Preview');
-  log('Instant LatheGeometry preview shown');
 
   // Wire up buttons
   document.getElementById('btn-revolve').addEventListener('click', doRevolve);
