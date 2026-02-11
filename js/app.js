@@ -68,6 +68,9 @@ let currentMode = 'parametric';
 /** Currently selected preset name. */
 let currentPreset = 'cup';
 
+/** Whether the current session was loaded from URL parameters (share link). */
+let loadedFromURL = false;
+
 // ============================================================
 // Mould Parameters (defaults)
 // ============================================================
@@ -416,8 +419,12 @@ function initParametricControls() {
     }
   }
 
-  // --- Apply initial preset (cup) ---
-  applyPreset('cup');
+  // --- Apply initial preset (cup) ONLY if not loaded from a share link ---
+  // When a share link is opened, the URL-decoded profile is already set as
+  // initialProfile. Calling applyPreset('cup') here would overwrite it.
+  if (!loadedFromURL) {
+    applyPreset('cup');
+  }
 }
 
 /**
@@ -624,15 +631,31 @@ function initMouldSettings() {
   gateSliderForPro(sliderShrinkage, shrinkageLabel);
   gateSliderForPro(sliderWallThickness, wallLabel);
 
-  // Sync initial UI values to mouldParams
-  if (sliderShrinkage) {
-    mouldParams.shrinkageRate = parseFloat(sliderShrinkage.value) / 100;
-  }
-  if (sliderWallThickness) {
-    mouldParams.wallThickness = parseFloat(sliderWallThickness.value);
-  }
-  if (selectSlipWell) {
-    mouldParams.slipWellType = selectSlipWell.value;
+  if (loadedFromURL) {
+    // URL params already set mouldParams -- sync DOM controls FROM mouldParams.
+    // Without this, DOM defaults would overwrite URL-decoded values.
+    if (sliderShrinkage) {
+      sliderShrinkage.value = Math.round(mouldParams.shrinkageRate * 100 * 10) / 10;
+      if (valShrinkage) valShrinkage.textContent = sliderShrinkage.value;
+    }
+    if (sliderWallThickness) {
+      sliderWallThickness.value = mouldParams.wallThickness;
+      if (valWallThickness) valWallThickness.textContent = mouldParams.wallThickness;
+    }
+    if (selectSlipWell) {
+      selectSlipWell.value = mouldParams.slipWellType;
+    }
+  } else {
+    // No URL params -- read DOM defaults into mouldParams (original flow).
+    if (sliderShrinkage) {
+      mouldParams.shrinkageRate = parseFloat(sliderShrinkage.value) / 100;
+    }
+    if (sliderWallThickness) {
+      mouldParams.wallThickness = parseFloat(sliderWallThickness.value);
+    }
+    if (selectSlipWell) {
+      mouldParams.slipWellType = selectSlipWell.value;
+    }
   }
 
   // Wire shrinkage slider
@@ -667,7 +690,12 @@ function initMouldSettings() {
   const sliderCavityGap = document.getElementById('slider-cavity-gap');
   const valCavityGap = document.getElementById('val-cavity-gap');
   if (sliderCavityGap) {
-    mouldParams.cavityGap = parseFloat(sliderCavityGap.value);
+    if (loadedFromURL) {
+      sliderCavityGap.value = mouldParams.cavityGap;
+      if (valCavityGap) valCavityGap.textContent = mouldParams.cavityGap;
+    } else {
+      mouldParams.cavityGap = parseFloat(sliderCavityGap.value);
+    }
     sliderCavityGap.addEventListener('input', () => {
       const mm = parseFloat(sliderCavityGap.value);
       if (valCavityGap) valCavityGap.textContent = mm;
@@ -679,7 +707,11 @@ function initMouldSettings() {
   // Wire split count selector
   const selectSplitCount = document.getElementById('select-split-count');
   if (selectSplitCount) {
-    mouldParams.splitCount = parseInt(selectSplitCount.value, 10);
+    if (loadedFromURL) {
+      selectSplitCount.value = mouldParams.splitCount;
+    } else {
+      mouldParams.splitCount = parseInt(selectSplitCount.value, 10);
+    }
     selectSplitCount.addEventListener('change', () => {
       mouldParams.splitCount = parseInt(selectSplitCount.value, 10);
       regenerateMould();
@@ -690,7 +722,12 @@ function initMouldSettings() {
   const sliderClearance = document.getElementById('slider-clearance');
   const valClearance = document.getElementById('val-clearance');
   if (sliderClearance) {
-    mouldParams.clearance = parseFloat(sliderClearance.value);
+    if (loadedFromURL) {
+      sliderClearance.value = mouldParams.clearance;
+      if (valClearance) valClearance.textContent = mouldParams.clearance;
+    } else {
+      mouldParams.clearance = parseFloat(sliderClearance.value);
+    }
     sliderClearance.addEventListener('input', () => {
       const mm = parseFloat(sliderClearance.value);
       if (valClearance) valClearance.textContent = mm;
@@ -703,7 +740,12 @@ function initMouldSettings() {
   const sliderOuterWall = document.getElementById('slider-outer-wall');
   const valOuterWall = document.getElementById('val-outer-wall');
   if (sliderOuterWall) {
-    mouldParams.outerWallThickness = parseFloat(sliderOuterWall.value);
+    if (loadedFromURL) {
+      sliderOuterWall.value = mouldParams.outerWallThickness;
+      if (valOuterWall) valOuterWall.textContent = mouldParams.outerWallThickness;
+    } else {
+      mouldParams.outerWallThickness = parseFloat(sliderOuterWall.value);
+    }
     sliderOuterWall.addEventListener('input', () => {
       const mm = parseFloat(sliderOuterWall.value);
       if (valOuterWall) valOuterWall.textContent = mm;
@@ -1245,6 +1287,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Check for URL-shared design (takes priority over localStorage and defaults)
   const urlDesign = decodeDesignFromURL();
+  loadedFromURL = !!(urlDesign.profilePoints || urlDesign.mouldSettings);
 
   // Initialize Paper.js profile editor (synchronous -- CDN loaded in <head>)
   // This must happen BEFORE WASM init so the user sees the 2D profile immediately.
@@ -1252,7 +1295,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const initialPoints = urlDesign.profilePoints || generatePresetProfile('cup', PRESET_DEFAULTS.cup);
   const initialProfile = createProfile(initialPoints);
 
-  // Apply URL-shared mould settings
+  // Apply URL-shared mould settings BEFORE initMouldSettings() reads DOM controls.
+  // The loadedFromURL flag ensures initMouldSettings() syncs DOM FROM mouldParams
+  // (not the reverse), so URL-decoded values are preserved.
   if (urlDesign.mouldSettings) {
     Object.assign(mouldParams, urlDesign.mouldSettings);
   }
@@ -1319,8 +1364,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Start in parametric mode: disable direct editing tools
-  if (profileEditor) {
+  // Start in correct mode: freehand if loaded from URL profile, parametric otherwise.
+  // URL-loaded profiles don't correspond to any preset, so parametric mode
+  // would overwrite them on any slider change.
+  if (urlDesign.profilePoints) {
+    switchMode('freehand');
+  } else if (profileEditor) {
     profileEditor.setToolsEnabled(false);
   }
 
