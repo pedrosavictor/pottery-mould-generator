@@ -51,6 +51,18 @@
       </div>
       <div id="preview-container">
         <div id="preview-status" class="preview-status">Preview</div>
+        <div id="wasm-loading-overlay">
+          <div class="wasm-loader">
+            <div class="spinner"></div>
+            <p id="wasm-loading-text">Loading geometry engine...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notification bar -->
+      <div id="notification-bar" class="notification-bar hidden">
+        <span id="notification-text"></span>
+        <button id="notification-dismiss" class="notification-dismiss" type="button">&times;</button>
       </div>
 
       <aside id="controls">
@@ -211,6 +223,9 @@
           </button>
           <button id="btn-download-step" class="btn-primary btn-pro" title="STEP export requires Pro subscription">
             Download STEP (Pro)
+          </button>
+          <button id="btn-share-link" class="btn-secondary modal-btn-full" type="button">
+            Copy Share Link
           </button>
           <p id="export-status" class="export-status"></p>
         </div>

@@ -40,6 +40,7 @@ import { downloadMouldZip } from './exportManager.js';
 import { calculatePlaster, formatPlasterResults, formatVolume } from './plasterCalculator.js';
 import { initEmailGate, checkEmailGate, showEmailModal, showVerifyModal, trackDownload } from './emailGate.js';
 import { isPro, getUserTier, getStoredEmail, isLoggedIn } from './authState.js';
+import { decodeDesignFromURL, updateURL, getShareableURL } from './urlSharing.js';
 
 // ============================================================
 // DOM References (populated on DOMContentLoaded)
@@ -217,6 +218,7 @@ async function onProfileChange(profilePoints) {
     log('Mould generated: inner-mould + outer-mould + ring + proof');
     updatePlasterCalculator();
     saveProfile(profilePoints);
+    updateURL(profilePoints, mouldParams);
   } catch (err) {
     console.warn('[app] Mould generation error:', err.message);
   }
@@ -1065,6 +1067,42 @@ function initExportControls() {
 }
 
 // ============================================================
+// Notifications
+// ============================================================
+
+let notificationTimer = null;
+
+/**
+ * Show a toast notification below the header.
+ * @param {string} message
+ * @param {'error'|'warning'|'success'|'info'} type
+ * @param {number} [duration=5000] - Auto-dismiss in ms (0 to persist)
+ */
+function showNotification(message, type = 'info', duration = 5000) {
+  const bar = document.getElementById('notification-bar');
+  const text = document.getElementById('notification-text');
+  const dismiss = document.getElementById('notification-dismiss');
+  if (!bar || !text) return;
+
+  if (notificationTimer) clearTimeout(notificationTimer);
+
+  text.textContent = message;
+  bar.className = `notification-bar ${type}`;
+
+  if (dismiss) {
+    dismiss.onclick = () => {
+      bar.classList.add('hidden');
+    };
+  }
+
+  if (duration > 0) {
+    notificationTimer = setTimeout(() => {
+      bar.classList.add('hidden');
+    }, duration);
+  }
+}
+
+// ============================================================
 // Auth Display
 // ============================================================
 
@@ -1172,11 +1210,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const container = document.getElementById('preview-container');
 
+  // Check for URL-shared design (takes priority over localStorage and defaults)
+  const urlDesign = decodeDesignFromURL();
+
   // Initialize Paper.js profile editor (synchronous -- CDN loaded in <head>)
   // This must happen BEFORE WASM init so the user sees the 2D profile immediately.
-  // Start with the cup preset instead of the hardcoded test profile.
-  const initialPoints = generatePresetProfile('cup', PRESET_DEFAULTS.cup);
+  // Use URL profile if available, otherwise cup preset.
+  const initialPoints = urlDesign.profilePoints || generatePresetProfile('cup', PRESET_DEFAULTS.cup);
   const initialProfile = createProfile(initialPoints);
+
+  // Apply URL-shared mould settings
+  if (urlDesign.mouldSettings) {
+    Object.assign(mouldParams, urlDesign.mouldSettings);
+  }
   try {
     profileEditor = initProfileEditor('profile-canvas', {
       initialProfile: initialProfile,
@@ -1261,8 +1307,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (statusEl) statusEl.textContent = 'Ready (no mesh)';
   });
 
+  // Wire share link button
+  const btnShareLink = document.getElementById('btn-share-link');
+  if (btnShareLink) {
+    btnShareLink.addEventListener('click', async () => {
+      if (!lastProfilePoints || lastProfilePoints.length < 2) return;
+      const url = getShareableURL(lastProfilePoints, mouldParams);
+      try {
+        await navigator.clipboard.writeText(url);
+        showNotification('Share link copied to clipboard!', 'success', 3000);
+      } catch (err) {
+        // Fallback: select text from a temporary input
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        showNotification('Share link copied!', 'success', 3000);
+      }
+    });
+  }
+
   // Initialize geometry worker (WASM loading -- takes 3-15 seconds)
   if (statusEl) statusEl.textContent = 'Loading WASM...';
+  const wasmOverlay = document.getElementById('wasm-loading-overlay');
+  const wasmLoadingText = document.getElementById('wasm-loading-text');
   const initStart = performance.now();
 
   try {
@@ -1270,12 +1340,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (loadingText) {
         loadingText.textContent = `Loading geometry engine... ${stage} (${percent}%)`;
       }
+      if (wasmLoadingText) {
+        wasmLoadingText.textContent = `Loading geometry engine... ${stage} (${percent}%)`;
+      }
     });
 
     const initElapsed = Math.round(performance.now() - initStart);
     log(`WASM initialized in ${initElapsed}ms`);
 
     if (statusEl) statusEl.textContent = 'Ready';
+
+    // Fade out the WASM loading overlay
+    if (wasmOverlay) {
+      if (wasmLoadingText) wasmLoadingText.textContent = 'Ready!';
+      setTimeout(() => {
+        wasmOverlay.classList.add('fade-out');
+        setTimeout(() => wasmOverlay.classList.add('hidden'), 500);
+      }, 400);
+    }
+
     if (loadingIndicator) {
       loadingIndicator.classList.add('hidden');
       loadingIndicator.classList.remove('visible');
@@ -1325,6 +1408,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (err.stack) log(err.stack);
     if (statusEl) statusEl.textContent = 'ERROR: ' + err.message;
     if (loadingText) loadingText.textContent = 'Failed to load geometry engine';
+    if (wasmLoadingText) wasmLoadingText.textContent = 'Failed to load -- using preview mode';
+    // Fade out overlay even on failure
+    if (wasmOverlay) {
+      setTimeout(() => {
+        wasmOverlay.classList.add('fade-out');
+        setTimeout(() => wasmOverlay.classList.add('hidden'), 500);
+      }, 2000);
+    }
+    showNotification('Geometry engine failed to load. Try refreshing the page.', 'error', 0);
     // LatheGeometry preview remains visible -- degraded but usable
     log('Falling back to LatheGeometry preview (WASM unavailable)');
   }

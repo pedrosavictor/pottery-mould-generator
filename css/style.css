@@ -776,7 +776,103 @@ aside#controls h3 {
   font-weight: 600;
 }
 
-/* ---- Loading Indicator ---- */
+/* ---- WASM Loading Overlay ---- */
+
+#wasm-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(235, 230, 224, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  transition: opacity 0.5s ease;
+}
+
+#wasm-loading-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#wasm-loading-overlay.hidden {
+  display: none;
+}
+
+.wasm-loader {
+  text-align: center;
+}
+
+.wasm-loader p {
+  margin: 1rem 0 0;
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+/* ---- Notification Bar ---- */
+
+.notification-bar {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  border-radius: 0 0 8px 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 500px;
+  width: max-content;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.notification-bar.hidden {
+  transform: translateX(-50%) translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.notification-bar.error {
+  background: #dc3545;
+  color: #fff;
+}
+
+.notification-bar.warning {
+  background: #e9a23b;
+  color: var(--dark);
+}
+
+.notification-bar.success {
+  background: var(--sage);
+  color: #fff;
+}
+
+.notification-bar.info {
+  background: var(--dark);
+  color: var(--cream);
+}
+
+.notification-dismiss {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  opacity: 0.7;
+  line-height: 1;
+}
+
+.notification-dismiss:hover {
+  opacity: 1;
+  background: none;
+}
+
+/* ---- Loading Indicator (dev tools) ---- */
 
 #loading-indicator {
   text-align: center;
