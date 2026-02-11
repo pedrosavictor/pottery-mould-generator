@@ -37,6 +37,16 @@
 
 import { withCleanup, getHeapSize } from './memoryTracker.js';
 
+/**
+ * Safely extract an error message from any thrown value.
+ * OpenCASCADE/WASM may throw strings, numbers, or objects without .message.
+ * @param {*} err - The caught error value.
+ * @returns {string} Human-readable error message.
+ */
+function safeErrorMessage(err) {
+  return err?.message || String(err);
+}
+
 // ============================================================
 // CDN URLs -- change to self-hosted paths if CDN fails
 // ============================================================
@@ -211,7 +221,7 @@ self.onmessage = async (e) => {
   } catch (err) {
     self.postMessage({
       id,
-      error: err.message || String(err),
+      error: safeErrorMessage(err),
     });
   }
 };
@@ -288,6 +298,41 @@ function buildAndRevolve(points) {
   const drawing = pen.close();
 
   // Place on XZ plane and revolve around Z axis.
+  return drawing.sketchOnPlane('XZ').revolve();
+}
+
+/**
+ * Build a 2D drawing from a closed rectangular profile and revolve into a 3D solid.
+ *
+ * Unlike buildAndRevolve(), this function closes the profile directly back to
+ * the first point WITHOUT going through the revolution axis (x=0). This is
+ * required for annular shapes (outer mould, ring) where the profile is a
+ * rectangle far from the axis. Going through x=0 would create a degenerate
+ * solid disc instead of an annular tube.
+ *
+ * @param {Array<{x: number, y: number, type: string}>} points - Rectangular profile points (4 corners).
+ * @returns {Object} The revolved replicad shape (caller must track for cleanup).
+ */
+function revolveClosedProfile(points) {
+  let pen = draw([points[0].x, points[0].y]);
+
+  for (let i = 1; i < points.length; i++) {
+    const pt = points[i];
+    if (pt.type === 'bezier' && pt.cp1 && pt.cp2) {
+      pen = pen.cubicBezierCurveTo(
+        [pt.x, pt.y],
+        [pt.cp1.x, pt.cp1.y],
+        [pt.cp2.x, pt.cp2.y]
+      );
+    } else {
+      pen = pen.lineTo([pt.x, pt.y]);
+    }
+  }
+
+  // Close directly back to the first point (no axis detour)
+  const drawing = pen.close();
+
+  // Place on XZ plane and revolve around Z axis
   return drawing.sketchOnPlane('XZ').revolve();
 }
 
@@ -462,7 +507,7 @@ function generateOuterMould(scaledPoints, mouldProfile, mouldParams, track) {
     { x: outerMouldOuterRadius, y: bottomZ, type: 'line' },
   ];
 
-  const outerSolid = track(buildAndRevolve(outerProfile));
+  const outerSolid = track(revolveClosedProfile(outerProfile));
 
   // Split into halves or quarters
   return splitSolid(outerSolid, splitCount, track);
@@ -507,7 +552,7 @@ function generateRing(scaledPoints, mouldProfile, mouldParams, track) {
     { x: ringOuterRadius, y: bottomZ - ringHeight, type: 'line' },
   ];
 
-  let ringSolid = track(buildAndRevolve(ringProfile));
+  let ringSolid = track(revolveClosedProfile(ringProfile));
 
   // Pour hole: cylindrical hole through the ring for plaster introduction.
   // Positioned at the midpoint of ring radial width, on the Y=0 plane.
@@ -668,9 +713,9 @@ function generateMouldParts(profilePoints, mouldParams) {
     } catch (shellErr) {
       // Shell failed -- return an error indicator alongside the proof model
       // so the app can show a meaningful error instead of crashing
-      console.warn('[worker] Shell operation failed:', shellErr.message);
+      console.warn('[worker] Shell operation failed:', safeErrorMessage(shellErr));
       results['inner-mould-error'] = {
-        message: `Shell operation failed: ${shellErr.message}. Try reducing wall thickness or simplifying the profile.`,
+        message: `Shell operation failed: ${safeErrorMessage(shellErr)}. Try reducing wall thickness or simplifying the profile.`,
       };
       return results; // Returns proof but no inner-mould mesh
     }
@@ -694,9 +739,9 @@ function generateMouldParts(profilePoints, mouldParams) {
         results[`outer-${piece.key}`] = toTransferableMesh(piece.solid.mesh(meshOpts));
       }
     } catch (outerErr) {
-      console.warn('[worker] Outer mould generation failed:', outerErr.message);
+      console.warn('[worker] Outer mould generation failed:', safeErrorMessage(outerErr));
       results['outer-mould-error'] = {
-        message: `Outer mould failed: ${outerErr.message}`,
+        message: `Outer mould failed: ${safeErrorMessage(outerErr)}`,
       };
     }
 
@@ -718,9 +763,9 @@ function generateMouldParts(profilePoints, mouldParams) {
         results[`ring-${piece.key}`] = toTransferableMesh(piece.solid.mesh(meshOpts));
       }
     } catch (ringErr) {
-      console.warn('[worker] Ring generation failed:', ringErr.message);
+      console.warn('[worker] Ring generation failed:', safeErrorMessage(ringErr));
       results['ring-error'] = {
-        message: `Ring generation failed: ${ringErr.message}`,
+        message: `Ring generation failed: ${safeErrorMessage(ringErr)}`,
       };
     }
 
@@ -866,7 +911,7 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
   // Helper: generate STEP blob with error handling (never blocks STL export)
   function safeStepBlob(shape) {
     try { return shape.blobSTEP(); } catch (e) {
-      console.warn('[worker] STEP blob failed:', e.message);
+      console.warn('[worker] STEP blob failed:', safeErrorMessage(e));
       return null;
     }
   }
@@ -906,7 +951,7 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
       stepBlobMap['inner-mould'] = safeStepBlob(shelledMould);
       partNames.push('inner-mould');
     } catch (shellErr) {
-      console.warn('[worker] Export: shell failed, skipping inner-mould:', shellErr.message);
+      console.warn('[worker] Export: shell failed, skipping inner-mould:', safeErrorMessage(shellErr));
     }
 
     // Outer mould pieces
@@ -927,7 +972,7 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
         partNames.push(name);
       }
     } catch (outerErr) {
-      console.warn('[worker] Export: outer mould failed:', outerErr.message);
+      console.warn('[worker] Export: outer mould failed:', safeErrorMessage(outerErr));
     }
 
     // Ring pieces
@@ -948,7 +993,7 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
         partNames.push(name);
       }
     } catch (ringErr) {
-      console.warn('[worker] Export: ring failed:', ringErr.message);
+      console.warn('[worker] Export: ring failed:', safeErrorMessage(ringErr));
     }
 
     // Cavity volume approximation (analytical)
