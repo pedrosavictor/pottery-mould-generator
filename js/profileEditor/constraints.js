@@ -186,14 +186,15 @@ function checkAxisCrossing(path, transform, violations) {
 }
 
 /**
- * Check for undercuts: radius decreasing as height increases, above the foot zone.
+ * Check for undercuts: radius decreasing above the maximum radius seen below.
  *
  * An undercut means the mould cannot be removed from the pot without breaking it.
- * We sample each curve at 20 evenly-spaced points and check that the profile
- * x-coordinate (radius) is monotonically non-decreasing as y (height) increases.
+ * We sample ALL curves into a height-sorted list and track the maximum radius
+ * seen from the foot upward. Any point whose radius is below the running maximum
+ * (minus a small floating-point tolerance) is an undercut.
  *
- * A tolerance of -0.5mm is applied to avoid false positives from floating point
- * or very slight concavities that are physically insignificant.
+ * This approach catches gradual undercuts that span multiple curves or many
+ * samples, which a per-curve adjacent-sample comparison would miss.
  *
  * @param {paper.Path} path
  * @param {{ toProfile: function }} transform
@@ -203,49 +204,65 @@ function checkAxisCrossing(path, transform, violations) {
 function checkUndercut(path, transform, footZoneHeight, violations) {
   if (!path.curves) return;
 
-  const SAMPLES = 20;
-  const TOLERANCE = -0.5; // mm -- allow tiny concavities
+  const SAMPLES_PER_CURVE = 20;
+  const TOLERANCE = 0.3; // mm -- floating-point tolerance only
 
+  // Step 1: Collect all sample points across all curves, with curve attribution
+  const allSamples = [];
   for (let i = 0; i < path.curves.length; i++) {
     const curve = path.curves[i];
-    let prevProfile = null;
-    let undercutFound = false;
-    let worstPoint = null;
-
-    for (let t = 0; t <= SAMPLES; t++) {
-      const time = t / SAMPLES;
+    // Skip t=0 on curves after the first to avoid duplicate shared endpoints
+    const startT = (i === 0) ? 0 : 1;
+    for (let t = startT; t <= SAMPLES_PER_CURVE; t++) {
+      const time = t / SAMPLES_PER_CURVE;
       const canvasPoint = curve.getPointAtTime(time);
       const profile = transform.toProfile(canvasPoint);
+      allSamples.push({ profile, canvasPoint, curveIndex: i });
+    }
+  }
 
-      // Skip points in the foot zone
-      if (profile.y < footZoneHeight) {
-        prevProfile = profile;
-        continue;
-      }
+  // Step 2: Sort by height (profile.y ascending = foot to rim)
+  allSamples.sort((a, b) => a.profile.y - b.profile.y);
 
-      if (prevProfile && prevProfile.y < profile.y) {
-        // Height increased -- check that radius didn't decrease
-        const radiusDrop = profile.x - prevProfile.x;
-        if (radiusDrop < TOLERANCE) {
-          undercutFound = true;
-          worstPoint = canvasPoint;
-        }
-      }
+  // Step 3: Sweep from foot to rim, tracking max radius
+  let maxRadius = -Infinity;
+  // Track which curves have undercuts and the worst point per curve
+  const undercutCurves = new Map(); // curveIndex -> { canvasPoint }
 
-      prevProfile = profile;
+  for (const sample of allSamples) {
+    const { profile, canvasPoint, curveIndex } = sample;
+
+    // Skip points in the foot zone
+    if (profile.y < footZoneHeight) {
+      maxRadius = Math.max(maxRadius, profile.x);
+      continue;
     }
 
-    if (undercutFound) {
-      violations.push({
-        type: 'undercut',
-        data: {
-          curveIndex: i,
-          canvasPoint: worstPoint ? worstPoint.clone() : curve.getPointAtTime(0.5),
-          startCanvas: curve.point1.clone(),
-          endCanvas: curve.point2.clone(),
-        },
-      });
+    maxRadius = Math.max(maxRadius, profile.x);
+
+    // Check if this point's radius is below the max seen so far
+    if (profile.x < maxRadius - TOLERANCE) {
+      // Record undercut for this curve (keep the worst point = largest deficit)
+      const existing = undercutCurves.get(curveIndex);
+      const deficit = maxRadius - profile.x;
+      if (!existing || deficit > existing.deficit) {
+        undercutCurves.set(curveIndex, { canvasPoint, deficit });
+      }
     }
+  }
+
+  // Step 4: Emit violations per affected curve
+  for (const [curveIndex, data] of undercutCurves) {
+    const curve = path.curves[curveIndex];
+    violations.push({
+      type: 'undercut',
+      data: {
+        curveIndex,
+        canvasPoint: data.canvasPoint.clone(),
+        startCanvas: curve.point1.clone(),
+        endCanvas: curve.point2.clone(),
+      },
+    });
   }
 }
 
