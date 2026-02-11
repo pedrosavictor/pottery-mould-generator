@@ -181,9 +181,22 @@ async function onProfileChange(profilePoints) {
       }
     }
 
+    // Clear and update ring pieces
+    preview3d.removePartsByPrefix('ring-');
+    for (const [partName, meshData] of Object.entries(mouldResult)) {
+      if (partName.startsWith('ring-') && !partName.endsWith('-error') && meshData.vertices) {
+        preview3d.updatePartMesh(partName, meshData);
+      }
+    }
+
     // Handle outer mould error
     if (mouldResult['outer-mould-error']) {
       console.warn('[app] Outer mould error:', mouldResult['outer-mould-error'].message);
+    }
+
+    // Handle ring error
+    if (mouldResult['ring-error']) {
+      console.warn('[app] Ring error:', mouldResult['ring-error'].message);
     }
 
     // Handle shell failure gracefully
@@ -194,7 +207,7 @@ async function onProfileChange(profilePoints) {
       }
     }
 
-    log('Mould generated: inner-mould + outer-mould + proof');
+    log('Mould generated: inner-mould + outer-mould + ring + proof');
   } catch (err) {
     console.warn('[app] Mould generation error:', err.message);
   }
@@ -497,9 +510,22 @@ async function regenerateMould() {
       }
     }
 
+    // Clear and update ring pieces
+    preview3d.removePartsByPrefix('ring-');
+    for (const [partName, meshData] of Object.entries(mouldResult)) {
+      if (partName.startsWith('ring-') && !partName.endsWith('-error') && meshData.vertices) {
+        preview3d.updatePartMesh(partName, meshData);
+      }
+    }
+
     // Handle outer mould error
     if (mouldResult['outer-mould-error']) {
       console.warn('[app] Outer mould error:', mouldResult['outer-mould-error'].message);
+    }
+
+    // Handle ring error
+    if (mouldResult['ring-error']) {
+      console.warn('[app] Ring error:', mouldResult['ring-error'].message);
     }
 
     // Handle shell failure gracefully
@@ -759,7 +785,13 @@ function initViewControls() {
     });
   }
 
-  // Ring checkbox is disabled for now (enabled in Plan 06-02).
+  // Ring visibility toggle (controls all ring-* parts)
+  const chkRing = document.getElementById('chk-show-ring');
+  if (chkRing) {
+    chkRing.addEventListener('change', () => {
+      preview3d.setPartGroupVisibility('ring-', chkRing.checked);
+    });
+  }
 
   // --- Assembled / Exploded view buttons ---
   const btnAssembled = document.getElementById('btn-assembled');
@@ -906,14 +938,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           preview3d.updatePartMesh('inner-mould', mouldResult['inner-mould']);
           log('Inner mould generated');
         }
-        // Render outer mould pieces from initial generation
+        // Render outer mould and ring pieces from initial generation
         for (const [partName, meshData] of Object.entries(mouldResult)) {
-          if (partName.startsWith('outer-') && !partName.endsWith('-error') && meshData.vertices) {
+          if ((partName.startsWith('outer-') || partName.startsWith('ring-')) && !partName.endsWith('-error') && meshData.vertices) {
             preview3d.updatePartMesh(partName, meshData);
           }
         }
         if (mouldResult['outer-front'] || mouldResult['outer-q1']) {
           log('Outer mould generated');
+        }
+        if (mouldResult['ring-front'] || mouldResult['ring-q1']) {
+          log('Ring generated');
         }
       }
     } catch (upgradeErr) {
