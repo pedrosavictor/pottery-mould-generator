@@ -40,19 +40,21 @@ export const PRESET_DEFAULTS = {
   cup: {
     height: 90,          // ~3.5" standard coffee cup
     rimDiameter: 80,     // ~3.25"
-    bellyWidth: 85,      // slightly wider than rim
+    bellyWidth: 78,      // slightly narrower than rim (no undercut)
     footDiameter: 55,    // ~65% of rim
   },
   bowl: {
     height: 65,          // ~2.5" cereal/soup bowl
     rimDiameter: 150,    // ~6"
-    bellyWidth: 155,     // very slightly wider
+    bellyWidth: 148,     // slightly narrower than rim (no undercut)
     footDiameter: 70,    // ~47% of rim
   },
+  // NOTE: Vase intentionally has undercuts (belly >> rim). Vase shapes require
+  // multi-piece moulds, which is handled by the split system (halves/quarters).
   vase: {
     height: 200,         // ~8"
     rimDiameter: 60,     // narrow neck ~2.5"
-    bellyWidth: 130,     // wide belly ~5"
+    bellyWidth: 130,     // wide belly ~5" (intentional undercut -- requires split mould)
     footDiameter: 70,    // moderate foot
   },
   tumbler: {
@@ -77,15 +79,16 @@ export const PRESET_SLIDER_RANGES = {
   cup: {
     height:       { min: 60,  max: 130, step: 1 },
     rimDiameter:  { min: 60,  max: 120, step: 1 },
-    bellyWidth:   { min: 60,  max: 130, step: 1 },
+    bellyWidth:   { min: 60,  max: 120, step: 1 },   // max clamped to rim max (no undercut)
     footDiameter: { min: 30,  max: 80,  step: 1 },
   },
   bowl: {
     height:       { min: 30,  max: 100, step: 1 },
     rimDiameter:  { min: 100, max: 250, step: 1 },
-    bellyWidth:   { min: 100, max: 260, step: 1 },
+    bellyWidth:   { min: 100, max: 250, step: 1 },   // max clamped to rim max (no undercut)
     footDiameter: { min: 40,  max: 120, step: 1 },
   },
+  // Vase: belly max intentionally exceeds rim max (undercut is expected for vase shapes)
   vase: {
     height:       { min: 100, max: 350, step: 1 },
     rimDiameter:  { min: 30,  max: 100, step: 1 },
@@ -95,7 +98,7 @@ export const PRESET_SLIDER_RANGES = {
   tumbler: {
     height:       { min: 70,  max: 160, step: 1 },
     rimDiameter:  { min: 55,  max: 110, step: 1 },
-    bellyWidth:   { min: 55,  max: 115, step: 1 },
+    bellyWidth:   { min: 55,  max: 110, step: 1 },   // max clamped to rim max (no undercut)
     footDiameter: { min: 40,  max: 90,  step: 1 },
   },
 };
@@ -192,7 +195,7 @@ function generateBowl({ height, rimDiameter, bellyWidth, footDiameter }) {
       cp1: { x: r(clampX(footR * 0.80)),  y: r(h * 0.15) },
       cp2: { x: r(clampX(bellyR * 0.85)), y: r(bellyY * 0.70) } },
     { x: r(clampX(rimR * 0.97)),  y: r(bodyTopY),    type: 'bezier',
-      cp1: { x: r(clampX(bellyR * 1.02)), y: r(bellyY + (bodyTopY - bellyY) * 0.35) },
+      cp1: { x: r(clampX(bellyR * 1.00)), y: r(bellyY + (bodyTopY - bellyY) * 0.35) },
       cp2: { x: r(clampX(rimR * 0.95)),   y: r(bodyTopY * 0.88) } },
     { x: r(clampX(rimR)),         y: r(h),           type: 'line' },
   ];
@@ -276,6 +279,44 @@ const GENERATORS = {
 };
 
 // ============================================================
+// Undercut validation
+// ============================================================
+
+/**
+ * Default foot zone height (mm). Profile points below this height are excluded
+ * from undercut checks because the foot zone naturally tapers inward.
+ */
+const FOOT_ZONE_HEIGHT = 5;
+
+/**
+ * Check a generated profile for undercuts (points wider than the rim).
+ * Logs a warning if any point's X coordinate exceeds the rim X coordinate
+ * above the foot zone. Does NOT block generation -- informational only.
+ *
+ * @param {string} presetName - Preset name for the warning message.
+ * @param {Array<ProfilePoint>} profile - Generated profile points.
+ */
+function warnIfUndercut(presetName, profile) {
+  if (!profile || profile.length < 2) return;
+
+  const rimX = profile[profile.length - 1].x;
+
+  for (let i = 0; i < profile.length - 1; i++) {
+    const pt = profile[i];
+    // Skip foot zone (below FOOT_ZONE_HEIGHT mm)
+    if (pt.y < FOOT_ZONE_HEIGHT) continue;
+    if (pt.x > rimX) {
+      console.warn(
+        `[parametricPresets] Undercut detected in "${presetName}" preset: ` +
+        `point ${i} (x=${pt.x.toFixed(1)}, y=${pt.y.toFixed(1)}) ` +
+        `exceeds rim radius (${rimX.toFixed(1)}). ` +
+        `Profile may require multi-piece mould.`
+      );
+    }
+  }
+}
+
+// ============================================================
 // Public API
 // ============================================================
 
@@ -292,5 +333,10 @@ const GENERATORS = {
  */
 export function generatePresetProfile(presetName, params) {
   const generator = GENERATORS[presetName] || GENERATORS.cup;
-  return generator(params);
+  const profile = generator(params);
+
+  // Warn (not block) if any body point exceeds the rim radius
+  warnIfUndercut(presetName, profile);
+
+  return profile;
 }
