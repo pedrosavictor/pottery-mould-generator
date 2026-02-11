@@ -87,11 +87,59 @@ const TERRA_COTTA_PARAMS = {
 };
 
 /**
+ * Blue-grey material for mould parts (inner-mould, outer-mould).
+ * Semi-transparent so the pot shape is visible through the mould.
+ */
+const MOULD_MATERIAL_PARAMS = {
+  color: 0x8899aa,
+  roughness: 0.5,
+  metalness: 0.2,
+  side: THREE.DoubleSide,
+  polygonOffset: true,
+  polygonOffsetFactor: 2.0,
+  polygonOffsetUnits: 1.0,
+  transparent: true,
+  opacity: 0.85,
+};
+
+/**
+ * Lighter warm tone for the proof model (ghost of the pot).
+ * 50% opacity to distinguish it from the solid pot rendering.
+ */
+const PROOF_MATERIAL_PARAMS = {
+  color: 0xb8a088,
+  roughness: 0.8,
+  metalness: 0.05,
+  side: THREE.DoubleSide,
+  polygonOffset: true,
+  polygonOffsetFactor: 2.0,
+  polygonOffsetUnits: 1.0,
+  transparent: true,
+  opacity: 0.5,
+};
+
+/**
  * Create a fresh terra cotta material instance.
  * @returns {THREE.MeshStandardMaterial}
  */
 function createTerraCottaMaterial() {
   return new THREE.MeshStandardMaterial(TERRA_COTTA_PARAMS);
+}
+
+/**
+ * Create the appropriate material for a named part.
+ *
+ * @param {string} partName - Part name (e.g., 'pot', 'inner-mould', 'proof').
+ * @returns {THREE.MeshStandardMaterial}
+ */
+function createMaterialForPart(partName) {
+  if (partName === 'inner-mould' || partName === 'outer-mould') {
+    return new THREE.MeshStandardMaterial(MOULD_MATERIAL_PARAMS);
+  }
+  if (partName === 'proof') {
+    return new THREE.MeshStandardMaterial(PROOF_MATERIAL_PARAMS);
+  }
+  return createTerraCottaMaterial();
 }
 
 // ============================================================
@@ -361,7 +409,7 @@ export function updatePartMesh(partName, meshData) {
   geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
   geometry.setIndex(new THREE.BufferAttribute(triangles, 1));
 
-  const material = createTerraCottaMaterial();
+  const material = createMaterialForPart(partName);
   const mesh = new THREE.Mesh(geometry, material);
 
   // Wrap in a group

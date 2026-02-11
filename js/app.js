@@ -12,14 +12,16 @@
  * ----------------------
  *   Profile Editor (Paper.js)
  *     -> onChange(profilePoints)
- *       -> preview3d.updateLatheFallback(points)          [INSTANT ~1ms]
- *       -> geometryBridge.generateWithCancellation(points) [ASYNC 50-500ms]
+ *       -> preview3d.updateLatheFallback(points)                      [INSTANT ~1ms]
+ *       -> geometryBridge.generateMouldWithCancellation(points, mouldParams) [ASYNC]
  *         -> Web Worker postMessage
- *           -> replicad draw() -> revolve() -> mesh()
+ *           -> proof: revolve(original profile) -> mesh()
+ *           -> inner-mould: revolve(scaled profile) -> shell() -> mesh()
  *           -> Float32Array/Uint32Array via Transferable
- *         -> main thread receives mesh data (or null if stale)
- *       -> preview3d.updateMesh(meshData)                  [replaces lathe]
- *         -> Three.js BufferGeometry -> render
+ *         -> main thread receives named mesh parts (or null if stale)
+ *       -> preview3d.updatePartMesh('pot', proof)         [replaces lathe]
+ *       -> preview3d.updatePartMesh('inner-mould', mould) [blue-grey shell]
+ *       -> preview3d.updatePartMesh('proof', proof)       [semi-transparent ghost]
  *
  * The LatheGeometry path provides instant visual feedback before WASM loads
  * and during WASM computation. The WASM path replaces it with higher quality.
@@ -60,6 +62,17 @@ let currentMode = 'parametric';
 
 /** Currently selected preset name. */
 let currentPreset = 'cup';
+
+// ============================================================
+// Mould Parameters (defaults)
+// ============================================================
+
+/** Current mould generation parameters. Updated by mould settings UI (Plan 05-02). */
+const mouldParams = {
+  shrinkageRate: 0.13,    // 13% default
+  wallThickness: 2.4,     // mm default
+  slipWellType: 'none',   // 'none' | 'regular' | 'tall' (Plan 05-02 adds UI)
+};
 
 // ============================================================
 // Logging
@@ -132,20 +145,32 @@ async function onProfileChange(profilePoints) {
   if (!geometryBridge.isReady()) return;
 
   try {
-    const result = await geometryBridge.generateWithCancellation(profilePoints);
+    // Generate all mould parts (proof + inner mould) via single worker call
+    const mouldResult = await geometryBridge.generateMouldWithCancellation(profilePoints, mouldParams);
+    if (mouldResult === null) return; // Stale -- newer edit already in flight
 
-    if (result === null) return; // Stale -- newer edit already in flight
-
-    preview3d.updateMesh(result);
-
-    const vertexCount = result.vertices.length / 3;
-    const triangleCount = result.triangles.length / 3;
-    updatePreviewStatus(`CAD -- ${vertexCount} verts, ${triangleCount} tris`);
-    if (statusEl) {
-      statusEl.textContent = `Ready -- ${vertexCount} verts, ${triangleCount} tris`;
+    // Use the proof mesh as the 'pot' display (replaces LatheGeometry with CAD quality)
+    if (mouldResult.proof) {
+      preview3d.updatePartMesh('pot', mouldResult.proof);
+      const verts = mouldResult.proof.vertices.length / 3;
+      const tris = mouldResult.proof.triangles.length / 3;
+      updatePreviewStatus(`CAD -- ${verts} verts, ${tris} tris`);
+      if (statusEl) statusEl.textContent = `Ready -- ${verts} verts, ${tris} tris`;
     }
+
+    // Update inner-mould part
+    if (mouldResult['inner-mould']) {
+      preview3d.updatePartMesh('inner-mould', mouldResult['inner-mould']);
+    }
+
+    // Render proof as a separate semi-transparent ghost part
+    if (mouldResult.proof) {
+      preview3d.updatePartMesh('proof', mouldResult.proof);
+    }
+
+    log('Mould generated: inner-mould + proof');
   } catch (err) {
-    console.warn('[app] Profile change revolve error:', err.message);
+    console.warn('[app] Mould generation error:', err.message);
   }
 }
 
@@ -547,8 +572,21 @@ function initViewControls() {
     });
   }
 
-  // Inner, outer, ring, proof are disabled for now (Phases 5-6).
-  // When enabled, they'll wire to their respective part names.
+  const chkInner = document.getElementById('chk-show-inner');
+  if (chkInner) {
+    chkInner.addEventListener('change', () => {
+      preview3d.setPartVisibility('inner-mould', chkInner.checked);
+    });
+  }
+
+  const chkProof = document.getElementById('chk-show-proof');
+  if (chkProof) {
+    chkProof.addEventListener('change', () => {
+      preview3d.setPartVisibility('proof', chkProof.checked);
+    });
+  }
+
+  // Outer mould and ring are disabled for now (Phase 6).
 
   // --- Assembled / Exploded view buttons ---
   const btnAssembled = document.getElementById('btn-assembled');
@@ -675,19 +713,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       testControls.classList.remove('hidden');
     }
 
-    // Upgrade to WASM mesh: revolve the current profile (replaces LatheGeometry)
-    // Use the same onProfileChange flow so it goes through the dual-path pipeline.
+    // Upgrade to WASM mesh: generate mould parts from current profile
+    // This replaces the LatheGeometry with CAD-quality proof + inner mould.
     try {
-      const result = await geometryBridge.generateWithCancellation(initialPoints);
-      if (result) {
-        preview3d.updateMesh(result);
-        const vertexCount = result.vertices.length / 3;
-        const triangleCount = result.triangles.length / 3;
-        updatePreviewStatus(`CAD -- ${vertexCount} verts, ${triangleCount} tris`);
-        log(`WASM mesh upgrade: ${vertexCount} verts, ${triangleCount} tris`);
+      const mouldResult = await geometryBridge.generateMouldWithCancellation(initialPoints, mouldParams);
+      if (mouldResult) {
+        if (mouldResult.proof) {
+          preview3d.updatePartMesh('pot', mouldResult.proof);
+          preview3d.updatePartMesh('proof', mouldResult.proof);
+          const vertexCount = mouldResult.proof.vertices.length / 3;
+          const triangleCount = mouldResult.proof.triangles.length / 3;
+          updatePreviewStatus(`CAD -- ${vertexCount} verts, ${triangleCount} tris`);
+          log(`WASM mould upgrade: ${vertexCount} verts, ${triangleCount} tris`);
+        }
+        if (mouldResult['inner-mould']) {
+          preview3d.updatePartMesh('inner-mould', mouldResult['inner-mould']);
+          log('Inner mould generated');
+        }
       }
     } catch (upgradeErr) {
-      console.warn('[app] WASM mesh upgrade failed (LatheGeometry still showing):', upgradeErr.message);
+      console.warn('[app] WASM mould generation failed (LatheGeometry still showing):', upgradeErr.message);
     }
   } catch (err) {
     log(`INIT ERROR: ${err.message}`);
