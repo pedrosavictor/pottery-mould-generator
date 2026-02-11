@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 16 COMPLETE -- Accessibility (WCAG 2.1 AA) (9 A11Y items resolved).
+**Current focus:** Phase 17 COMPLETE -- UI Layout & Polish (18 UI items resolved).
 
 ## Current Position
 
-Phase: 16 of 16 (Accessibility - WCAG 2.1 AA)
+Phase: 17 of 17 (UI Layout & Polish)
 Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-11 -- Completed Phase 16 (A11Y-01 through A11Y-09)
+Last activity: 2026-02-11 -- Completed Phase 17 (UI-01 through UI-18)
 
-Progress: [███████████████████████████████] 100% (31/31 plans)
+Progress: [████████████████████████████████] 100% (32/32 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 31
+- Total plans completed: 32
 - Average duration: ~2.9 minutes
-- Total execution time: ~76 minutes
+- Total execution time: ~81 minutes
 
 **By Phase:**
 
@@ -43,9 +43,10 @@ Progress: [███████████████████████
 | 14. Preset Defaults & Geometry Fixes | 1/1 | ~5m | ~5m |
 | 15. URL Sharing & State Fixes | 1/1 | ~3m | ~3m |
 | 16. Accessibility (WCAG 2.1 AA) | 1/1 | ~3m | ~3m |
+| 17. UI Layout & Polish | 1/1 | ~5m | ~5m |
 
 **Recent Trend:**
-- Last 5 plans: 13-01, 14-01, 15-01, 16-01 (~3-5m)
+- Last 5 plans: 14-01, 15-01, 16-01, 17-01 (~3-5m)
 - Trend: Stable at ~3-5m per plan
 
 *Updated after each plan completion*
@@ -154,6 +155,10 @@ Recent decisions affecting current work:
 - [16-01]: 3px solid var(--text-color) with 2px offset for :focus-visible indicators
 - [16-01]: Focus trap filters focusable elements by checking closest parent view hidden state
 - [16-01]: aria-labelledby updated dynamically when switching modal views
+- [17-01]: All remaining !important usages justified (canvas override, reduced-motion, .hidden, modal)
+- [17-01]: Global button reset scoped to #dev-tools; lighter reset for all buttons
+- [17-01]: Pro gating uses .pro-gated CSS class instead of inline style.opacity
+- [17-01]: Dimension label X clamped to canvasWidth-50 to prevent clipping on narrow screens
 
 ### Pending Todos
 
@@ -174,6 +179,7 @@ Recent decisions affecting current work:
 - Browser validation of pour hole: circular opening through ring at Y=0, clearance slider, outer wall slider.
 - Browser validation of brand alignment: verify Josefin Sans + Inter render, hard shadows visible, header centered.
 - Browser validation of preset fixes: cup and bowl should not show undercut warnings in console.
+- Browser validation of UI-17 changes: tablet layout, mobile heights, orbit hint, dimension clamping.
 
 ### Blockers/Concerns
 
@@ -186,5 +192,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed Phase 16 (Accessibility WCAG 2.1 AA). All 31 plans complete.
+Stopped at: Completed Phase 17 (UI Layout & Polish). All 32 plans complete.
 Resume file: None
