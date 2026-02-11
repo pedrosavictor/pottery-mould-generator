@@ -126,6 +126,12 @@ function handleError(e) {
   const errorMsg = e.message || 'Unknown worker error';
   console.error('[geometryBridge] Worker error:', errorMsg);
 
+  // Reset ready state so subsequent calls fail fast with a clear error
+  // instead of hanging on a worker that may be in a broken state.
+  // The user can recover by calling init() again (or refreshing the page).
+  ready = false;
+  initPromise = null;
+
   // Reject all pending promises -- the worker may be in a bad state.
   for (const [id, resolver] of pending) {
     resolver.reject(new Error(`Worker error: ${errorMsg}`));

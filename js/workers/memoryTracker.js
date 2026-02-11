@@ -58,8 +58,12 @@ export function withCleanup(fn) {
 /**
  * Get the current WASM heap size in bytes.
  *
- * This reads the Emscripten Module.HEAP8 buffer length, which reflects
- * the total allocated WASM linear memory. Note:
+ * Attempts multiple sources in priority order:
+ *   1. Emscripten Module.HEAP8 -- direct WASM linear memory size (most accurate)
+ *   2. performance.memory.usedJSHeapSize -- Chrome-only JS heap API (approximate)
+ *   3. null -- heap tracking unavailable in this environment
+ *
+ * Note:
  * - WASM memory grows but never shrinks (pages are never returned to OS)
  * - After initial operations, the heap should plateau at a stable size
  * - Continuous growth across many operations indicates a memory leak
@@ -67,10 +71,20 @@ export function withCleanup(fn) {
  * @returns {number|null} Heap size in bytes, or null if not available.
  */
 export function getHeapSize() {
-  // Emscripten exposes the WASM heap via the Module global.
+  // Priority 1: Emscripten Module.HEAP8 (direct WASM heap measurement).
   // In a worker context, Module is set by the opencascade WASM loader.
   if (typeof Module !== 'undefined' && Module.HEAP8) {
     return Module.HEAP8.buffer.byteLength;
   }
+
+  // Priority 2: Chrome's performance.memory API (JS heap, not WASM-specific).
+  // This is a non-standard API available only in Chromium browsers.
+  // It reports total JS heap usage, which includes WASM memory allocations.
+  if (typeof performance !== 'undefined' && performance.memory) {
+    return performance.memory.usedJSHeapSize;
+  }
+
+  // No heap measurement available. This occurs in Firefox/Safari workers
+  // where neither Module nor performance.memory is exposed.
   return null;
 }

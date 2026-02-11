@@ -221,10 +221,20 @@ export function initProfileEditor(canvasId, options = {}) {
   const readoutBelly = document.getElementById('readout-belly');
   const readoutFoot = document.getElementById('readout-foot');
 
+  /** Minimum and maximum allowed dimension values in mm. */
+  const DIM_MIN = 5;
+  const DIM_MAX = 500;
+
   if (inputHeight) {
     inputHeight.addEventListener('change', () => {
       const val = parseFloat(inputHeight.value);
-      if (!val || val <= 0) return;
+      if (!isFinite(val) || val < DIM_MIN || val > DIM_MAX) {
+        // Revert to current value and show brief warning
+        const dims = getDimensions(currentProfilePoints);
+        inputHeight.value = dims.height;
+        console.warn(`[profileEditor] Height must be between ${DIM_MIN}mm and ${DIM_MAX}mm`);
+        return;
+      }
       const newPoints = applyDimensionInput(currentProfilePoints, 'height', val);
       const profile = createProfile(newPoints);
       editorState.path = null; // force re-render
@@ -235,7 +245,13 @@ export function initProfileEditor(canvasId, options = {}) {
   if (inputRimDiam) {
     inputRimDiam.addEventListener('change', () => {
       const val = parseFloat(inputRimDiam.value);
-      if (!val || val <= 0) return;
+      if (!isFinite(val) || val < DIM_MIN || val > DIM_MAX) {
+        // Revert to current value and show brief warning
+        const dims = getDimensions(currentProfilePoints);
+        inputRimDiam.value = dims.rimDiameter;
+        console.warn(`[profileEditor] Rim diameter must be between ${DIM_MIN}mm and ${DIM_MAX}mm`);
+        return;
+      }
       const newPoints = applyDimensionInput(currentProfilePoints, 'rimDiameter', val);
       const profile = createProfile(newPoints);
       editorState.path = null; // force re-render
