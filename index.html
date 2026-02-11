@@ -13,6 +13,7 @@
   }
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.18/paper-core.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
@@ -184,6 +185,24 @@
           <label class="toggle-item">
             <input type="checkbox" id="chk-show-measurements"> Show Measurements
           </label>
+        </div>
+
+        <div id="export-controls">
+          <h3>Export</h3>
+          <div class="export-resolution">
+            <label>Resolution</label>
+            <div class="resolution-toggle">
+              <button id="btn-res-standard" class="res-btn active">Standard</button>
+              <button id="btn-res-high" class="res-btn">High</button>
+            </div>
+          </div>
+          <button id="btn-download-zip" class="btn-primary" disabled>
+            Download STL (ZIP)
+          </button>
+          <button id="btn-download-step" class="btn-primary btn-pro" title="Available with Pro subscription">
+            Download STEP (Pro)
+          </button>
+          <p id="export-status" class="export-status"></p>
         </div>
 
         <div id="dimension-inputs">

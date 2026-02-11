@@ -36,6 +36,7 @@ import { initProfileEditor } from './profileEditor.js';
 import { generatePresetProfile, PRESET_DEFAULTS, PRESET_SLIDER_RANGES } from './presets/parametricPresets.js';
 import { importSVGFile } from './svgImport.js';
 import { loadReferenceImage, clearReferenceImage, setReferenceOpacity } from './referenceImage.js';
+import { downloadMouldZip } from './exportManager.js';
 
 // ============================================================
 // DOM References (populated on DOMContentLoaded)
@@ -771,6 +772,9 @@ function initReferenceImage() {
 // View Controls (3D visibility, exploded view, measurements)
 // ============================================================
 
+/** STL export resolution: 'standard' or 'high'. */
+let exportResolution = 'standard';
+
 /** Whether 3D measurements are currently shown. */
 let showMeasurements = false;
 
@@ -853,6 +857,79 @@ function initViewControls() {
 }
 
 // ============================================================
+// Export Controls
+// ============================================================
+
+/**
+ * Initialize export controls: resolution toggle, download button, STEP placeholder.
+ * Called once during DOMContentLoaded.
+ */
+function initExportControls() {
+  const btnStandard = document.getElementById('btn-res-standard');
+  const btnHigh = document.getElementById('btn-res-high');
+  const btnDownload = document.getElementById('btn-download-zip');
+  const exportStatus = document.getElementById('export-status');
+
+  // Resolution toggle
+  if (btnStandard) {
+    btnStandard.addEventListener('click', () => {
+      exportResolution = 'standard';
+      btnStandard.classList.add('active');
+      if (btnHigh) btnHigh.classList.remove('active');
+    });
+  }
+  if (btnHigh) {
+    btnHigh.addEventListener('click', () => {
+      exportResolution = 'high';
+      btnHigh.classList.add('active');
+      if (btnStandard) btnStandard.classList.remove('active');
+    });
+  }
+
+  // Download button
+  if (btnDownload) {
+    btnDownload.addEventListener('click', async () => {
+      if (!lastProfilePoints || lastProfilePoints.length < 2) {
+        if (exportStatus) exportStatus.textContent = 'No profile to export';
+        return;
+      }
+
+      btnDownload.disabled = true;
+      btnDownload.textContent = 'Exporting...';
+
+      try {
+        await downloadMouldZip(lastProfilePoints, mouldParams, exportResolution, {
+          onProgress: (msg) => {
+            if (exportStatus) exportStatus.textContent = msg;
+          },
+        });
+        if (exportStatus) exportStatus.textContent = 'Download started!';
+        setTimeout(() => {
+          if (exportStatus) exportStatus.textContent = '';
+        }, 3000);
+      } catch (err) {
+        console.error('[app] Export error:', err);
+        if (exportStatus) exportStatus.textContent = 'Export failed: ' + err.message;
+      } finally {
+        btnDownload.disabled = false;
+        btnDownload.textContent = 'Download STL (ZIP)';
+      }
+    });
+  }
+
+  // STEP button (Pro gating placeholder)
+  const btnStep = document.getElementById('btn-download-step');
+  if (btnStep) {
+    btnStep.addEventListener('click', () => {
+      if (exportStatus) {
+        exportStatus.textContent = 'STEP export available with Pro subscription';
+        setTimeout(() => { exportStatus.textContent = ''; }, 3000);
+      }
+    });
+  }
+}
+
+// ============================================================
 // Initialization
 // ============================================================
 
@@ -894,6 +971,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize 3D view controls (visibility toggles, exploded view, measurements)
   initViewControls();
+
+  // Initialize export controls (resolution toggle, download button)
+  initExportControls();
 
   // Start in parametric mode: disable direct editing tools
   if (profileEditor) {
@@ -949,6 +1029,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (testControls) {
       testControls.classList.remove('hidden');
     }
+    const btnDownload = document.getElementById('btn-download-zip');
+    if (btnDownload) btnDownload.disabled = false;
 
     // Upgrade to WASM mesh: generate mould parts from current profile
     // This replaces the LatheGeometry with CAD-quality proof + inner mould.

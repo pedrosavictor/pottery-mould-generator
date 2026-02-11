@@ -485,6 +485,107 @@ aside#controls h3 {
   color: var(--cream);
 }
 
+/* ---- Export Controls ---- */
+
+#export-controls {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+#export-controls h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  color: var(--dark);
+}
+
+.export-resolution {
+  margin-bottom: 0.5rem;
+}
+
+.export-resolution > label {
+  display: block;
+  font-size: 0.8rem;
+  color: #555;
+  margin-bottom: 0.3rem;
+}
+
+.resolution-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 0.5rem;
+}
+
+.res-btn {
+  flex: 1;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border);
+  background: white;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.res-btn:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.res-btn:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.res-btn.active {
+  background: var(--terra-cotta);
+  color: white;
+  border-color: var(--terra-cotta);
+}
+
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 1rem;
+  margin-bottom: 0.5rem;
+  border: none;
+  border-radius: 4px;
+  background: var(--terra-cotta);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--terra-cotta-dark);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-pro {
+  background: var(--sage);
+  position: relative;
+}
+
+.btn-pro::after {
+  content: 'PRO';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.6rem;
+  background: rgba(0,0,0,0.2);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.export-status {
+  font-size: 0.8rem;
+  color: var(--sage);
+  margin: 0.25rem 0 0 0;
+  min-height: 1.2em;
+}
+
 /* ---- Dimension Inputs Panel ---- */
 
 #dimension-inputs {

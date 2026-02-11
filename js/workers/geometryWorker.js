@@ -177,10 +177,21 @@ self.onmessage = async (e) => {
         break;
       }
 
+      case 'exportParts': {
+        await initialize();
+        const { profilePoints, mouldParams, resolution } = params;
+        const exportData = await exportMouldPartsForDownload(profilePoints, mouldParams, resolution);
+
+        // Transfer all STL ArrayBuffers for zero-copy
+        const transferList = Object.values(exportData.stlBuffers);
+        self.postMessage({ id, data: exportData }, transferList);
+        break;
+      }
+
       default: {
         self.postMessage({
           id,
-          error: `Unknown command: "${type}". Supported commands: init, revolve, generateMould, heapSize, memoryTest`,
+          error: `Unknown command: "${type}". Supported commands: init, revolve, generateMould, exportParts, heapSize, memoryTest`,
         });
       }
     }
@@ -702,6 +713,123 @@ function generateMouldParts(profilePoints, mouldParams) {
 
     return results;
   });
+}
+
+// ============================================================
+// Export: STL/STEP blob generation
+// ============================================================
+
+/**
+ * Re-generate mould shapes and export as binary STL ArrayBuffers.
+ *
+ * Shapes must be re-generated because the preview pipeline deletes them
+ * after mesh extraction (withCleanup pattern). Export runs blobSTL()
+ * INSIDE withCleanup while shapes still exist, then converts Blobs to
+ * ArrayBuffers OUTSIDE (since blob.arrayBuffer() is async).
+ *
+ * @param {Array} profilePoints
+ * @param {Object} mouldParams
+ * @param {'standard'|'high'} resolution
+ * @returns {Promise<{ stlBuffers: Object<string, ArrayBuffer>, partNames: string[] }>}
+ */
+async function exportMouldPartsForDownload(profilePoints, mouldParams, resolution) {
+  const meshOpts = resolution === 'high'
+    ? { tolerance: 0.01, angularTolerance: 0.1 }
+    : { tolerance: 0.1, angularTolerance: 0.3 };
+
+  const {
+    shrinkageRate = 0.13,
+    wallThickness = 2.4,
+    slipWellType = 'none',
+    cavityGap = 25,
+    splitCount = 2,
+    outerWallThickness = 2.4,
+    clearance = 0.3,
+    ringHeight = 8,
+  } = mouldParams || {};
+
+  // withCleanup is synchronous -- collects Blobs while shapes exist
+  const blobs = withCleanup((track) => {
+    const blobMap = {};
+    const partNames = [];
+
+    // Proof model: original profile at fired dimensions
+    const proofShape = track(buildAndRevolve(profilePoints));
+    blobMap['proof-model'] = proofShape.blobSTL({ binary: true, ...meshOpts });
+    partNames.push('proof-model');
+
+    // Inner mould: shrinkage-scaled, optionally with slip well, shelled
+    const scaledPoints = scaleProfileForShrinkage(profilePoints, shrinkageRate);
+    const wellHeights = { none: 0, regular: 25, tall: 50 };
+    const wellHeight = wellHeights[slipWellType] || 0;
+    const mouldProfile = wellHeight > 0
+      ? extendProfileForSlipWell(scaledPoints, wallThickness, wellHeight)
+      : scaledPoints;
+
+    const mouldSolid = track(buildAndRevolve(mouldProfile));
+    const topZ = mouldProfile[mouldProfile.length - 1].y;
+
+    try {
+      const shelledMould = track(
+        mouldSolid.shell(-wallThickness, (f) => f.inPlane('XY', topZ))
+      );
+      blobMap['inner-mould'] = shelledMould.blobSTL({ binary: true, ...meshOpts });
+      partNames.push('inner-mould');
+    } catch (shellErr) {
+      console.warn('[worker] Export: shell failed, skipping inner-mould:', shellErr.message);
+    }
+
+    // Outer mould pieces
+    try {
+      const outerPieces = generateOuterMould(scaledPoints, mouldProfile, mouldParams, track);
+      const outerBottomZ = mouldProfile[0].y;
+      const outerTopZ = mouldProfile[mouldProfile.length - 1].y;
+      const maxProfileRadius = Math.max(...scaledPoints.map(p => p.x));
+      const outerInnerR = maxProfileRadius + wallThickness + cavityGap;
+      const outerOuterR = outerInnerR + outerWallThickness;
+      const ridgedOuterPieces = addAssemblyFeatures(
+        outerPieces, 'outer', outerBottomZ, outerTopZ, outerInnerR, outerOuterR, mouldParams, track
+      );
+      for (const piece of ridgedOuterPieces) {
+        const name = `outer-${piece.key}`;
+        blobMap[name] = piece.solid.blobSTL({ binary: true, ...meshOpts });
+        partNames.push(name);
+      }
+    } catch (outerErr) {
+      console.warn('[worker] Export: outer mould failed:', outerErr.message);
+    }
+
+    // Ring pieces
+    try {
+      const ringPieces = generateRing(scaledPoints, mouldProfile, mouldParams, track);
+      const ringBottomZ = mouldProfile[0].y - ringHeight;
+      const ringTopZ = mouldProfile[0].y;
+      const ringMaxR = Math.max(...scaledPoints.map(p => p.x));
+      const ringInnerR = ringMaxR + wallThickness + 0.5;
+      const ringOuterR = ringMaxR + wallThickness + cavityGap;
+      const ridgedRingPieces = addAssemblyFeatures(
+        ringPieces, 'ring', ringBottomZ, ringTopZ, ringInnerR, ringOuterR, mouldParams, track
+      );
+      for (const piece of ridgedRingPieces) {
+        const name = `ring-${piece.key}`;
+        blobMap[name] = piece.solid.blobSTL({ binary: true, ...meshOpts });
+        partNames.push(name);
+      }
+    } catch (ringErr) {
+      console.warn('[worker] Export: ring failed:', ringErr.message);
+    }
+
+    return { blobMap, partNames };
+  });
+
+  // Convert Blobs to ArrayBuffers OUTSIDE withCleanup (async)
+  const stlBuffers = {};
+  const partNames = blobs.partNames;
+  await Promise.all(partNames.map(async (name) => {
+    stlBuffers[name] = await blobs.blobMap[name].arrayBuffer();
+  }));
+
+  return { stlBuffers, partNames };
 }
 
 // ============================================================

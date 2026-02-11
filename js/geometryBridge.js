@@ -226,6 +226,21 @@ export async function generateMouldWithCancellation(profilePoints, mouldParams) 
 }
 
 /**
+ * Export all mould parts as binary STL ArrayBuffers.
+ *
+ * Regenerates shapes in the worker and exports at the specified resolution.
+ * Returns ArrayBuffers suitable for JSZip bundling on the main thread.
+ *
+ * @param {Array<ProfilePoint>} profilePoints
+ * @param {Object} mouldParams
+ * @param {'standard'|'high'} resolution
+ * @returns {Promise<{ stlBuffers: Object<string, ArrayBuffer>, partNames: string[] }>}
+ */
+export function exportParts(profilePoints, mouldParams, resolution = 'standard') {
+  return sendCommand('exportParts', { profilePoints, mouldParams, resolution });
+}
+
+/**
  * Revolve a profile with latest-wins cancellation.
  *
  * If called again before the previous call completes, the previous result
