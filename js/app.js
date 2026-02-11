@@ -71,7 +71,7 @@ let currentPreset = 'cup';
 const mouldParams = {
   shrinkageRate: 0.13,    // 13% default
   wallThickness: 2.4,     // mm default
-  slipWellType: 'none',   // 'none' | 'regular' | 'tall' (Plan 05-02 adds UI)
+  slipWellType: 'regular', // 'none' | 'regular' | 'tall' (matches HTML default)
 };
 
 // ============================================================
@@ -166,6 +166,14 @@ async function onProfileChange(profilePoints) {
     // Render proof as a separate semi-transparent ghost part
     if (mouldResult.proof) {
       preview3d.updatePartMesh('proof', mouldResult.proof);
+    }
+
+    // Handle shell failure gracefully
+    if (mouldResult['inner-mould-error']) {
+      console.warn('[app] Inner mould error:', mouldResult['inner-mould-error'].message);
+      if (statusEl) {
+        statusEl.textContent = 'Mould warning -- ' + mouldResult['inner-mould-error'].message;
+      }
     }
 
     log('Mould generated: inner-mould + proof');
@@ -434,6 +442,107 @@ function switchMode(mode) {
 }
 
 // ============================================================
+// Mould Settings
+// ============================================================
+
+/**
+ * Regenerate mould parts with current mouldParams and the last known profile.
+ * Called when mould settings (shrinkage, wall thickness, slip well) change.
+ * Does NOT re-generate the profile shape -- only the mould geometry.
+ */
+async function regenerateMould() {
+  if (!lastProfilePoints || lastProfilePoints.length < 2) return;
+  if (!geometryBridge.isReady()) return;
+
+  try {
+    const mouldResult = await geometryBridge.generateMouldWithCancellation(
+      lastProfilePoints, mouldParams
+    );
+    if (mouldResult === null) return; // Stale
+
+    // Update mould parts in 3D preview
+    if (mouldResult.proof) {
+      preview3d.updatePartMesh('pot', mouldResult.proof);
+      preview3d.updatePartMesh('proof', mouldResult.proof);
+    }
+    if (mouldResult['inner-mould']) {
+      preview3d.updatePartMesh('inner-mould', mouldResult['inner-mould']);
+    }
+
+    // Handle shell failure gracefully
+    if (mouldResult['inner-mould-error']) {
+      const errMsg = mouldResult['inner-mould-error'].message;
+      console.warn('[app] Inner mould error:', errMsg);
+      if (statusEl) {
+        statusEl.textContent = 'Mould error -- ' + errMsg;
+      }
+      // Clear the inner-mould part so stale geometry doesn't remain
+      preview3d.setPartVisibility('inner-mould', false);
+    } else if (statusEl) {
+      statusEl.textContent = 'Ready';
+    }
+
+    log(`Mould regenerated (shrinkage: ${(mouldParams.shrinkageRate * 100).toFixed(1)}%, wall: ${mouldParams.wallThickness}mm, well: ${mouldParams.slipWellType})`);
+  } catch (err) {
+    console.warn('[app] Mould regeneration error:', err.message);
+    if (statusEl) {
+      statusEl.textContent = 'Mould generation failed';
+    }
+  }
+}
+
+/**
+ * Initialize mould settings controls: shrinkage slider, wall thickness slider,
+ * slip well selector. Changes trigger mould regeneration.
+ */
+function initMouldSettings() {
+  const sliderShrinkage = document.getElementById('slider-shrinkage');
+  const valShrinkage = document.getElementById('val-shrinkage');
+  const sliderWallThickness = document.getElementById('slider-wall-thickness');
+  const valWallThickness = document.getElementById('val-wall-thickness');
+  const selectSlipWell = document.getElementById('select-slip-well');
+
+  // Sync initial UI values to mouldParams
+  if (sliderShrinkage) {
+    mouldParams.shrinkageRate = parseFloat(sliderShrinkage.value) / 100;
+  }
+  if (sliderWallThickness) {
+    mouldParams.wallThickness = parseFloat(sliderWallThickness.value);
+  }
+  if (selectSlipWell) {
+    mouldParams.slipWellType = selectSlipWell.value;
+  }
+
+  // Wire shrinkage slider
+  if (sliderShrinkage) {
+    sliderShrinkage.addEventListener('input', () => {
+      const pct = parseFloat(sliderShrinkage.value);
+      if (valShrinkage) valShrinkage.textContent = pct;
+      mouldParams.shrinkageRate = pct / 100;
+      regenerateMould();
+    });
+  }
+
+  // Wire wall thickness slider
+  if (sliderWallThickness) {
+    sliderWallThickness.addEventListener('input', () => {
+      const mm = parseFloat(sliderWallThickness.value);
+      if (valWallThickness) valWallThickness.textContent = mm;
+      mouldParams.wallThickness = mm;
+      regenerateMould();
+    });
+  }
+
+  // Wire slip well selector
+  if (selectSlipWell) {
+    selectSlipWell.addEventListener('change', () => {
+      mouldParams.slipWellType = selectSlipWell.value;
+      regenerateMould();
+    });
+  }
+}
+
+// ============================================================
 // SVG Import
 // ============================================================
 
@@ -654,6 +763,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize parametric controls (mode toggle, preset selector, sliders)
   initParametricControls();
+
+  // Initialize mould settings (shrinkage, wall thickness, slip well)
+  initMouldSettings();
 
   // Initialize 3D view controls (visibility toggles, exploded view, measurements)
   initViewControls();
