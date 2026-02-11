@@ -589,6 +589,7 @@ async function regenerateMould() {
     log(`Mould regenerated (shrinkage: ${(mouldParams.shrinkageRate * 100).toFixed(1)}%, wall: ${mouldParams.wallThickness}mm, well: ${mouldParams.slipWellType}, cavity: ${mouldParams.cavityGap}mm, split: ${mouldParams.splitCount})`);
     updatePlasterCalculator();
     saveSettings();
+    updateURL(lastProfilePoints, mouldParams);
   } catch (err) {
     console.warn('[app] Mould regeneration error:', err.message);
     if (statusEl) {
@@ -1395,9 +1396,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnShareLink.addEventListener('click', async () => {
       if (!lastProfilePoints || lastProfilePoints.length < 2) return;
       const url = getShareableURL(lastProfilePoints, mouldParams);
+
+      // Warn user if URL is very long (complex profiles)
+      if (url.length > 4000) {
+        showNotification(
+          `Share link copied, but it is very long (${url.length} chars). It may not work in all browsers.`,
+          'warning', 6000
+        );
+      }
+
       try {
         await navigator.clipboard.writeText(url);
-        showNotification('Share link copied to clipboard!', 'success', 3000);
+        if (url.length <= 4000) {
+          showNotification('Share link copied to clipboard!', 'success', 3000);
+        }
       } catch (err) {
         // Fallback: select text from a temporary input
         const input = document.createElement('input');
@@ -1406,7 +1418,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         input.select();
         document.execCommand('copy');
         document.body.removeChild(input);
-        showNotification('Share link copied!', 'success', 3000);
+        if (url.length <= 4000) {
+          showNotification('Share link copied!', 'success', 3000);
+        }
       }
     });
   }

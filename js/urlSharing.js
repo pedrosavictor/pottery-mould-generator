@@ -7,6 +7,29 @@
 
 let updateTimer = null;
 
+/** URL length threshold -- URLs above this may not work in all browsers. */
+const URL_LENGTH_WARN_THRESHOLD = 4000;
+
+/**
+ * Safely encode a string to base64, handling non-ASCII characters.
+ * Standard btoa() throws on characters outside Latin1 range.
+ * @param {string} str
+ * @returns {string} base64-encoded string
+ */
+function safeBase64Encode(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+/**
+ * Safely decode a base64 string, handling non-ASCII characters.
+ * Reverses safeBase64Encode.
+ * @param {string} b64
+ * @returns {string} decoded string
+ */
+function safeBase64Decode(b64) {
+  return decodeURIComponent(escape(atob(b64)));
+}
+
 /**
  * Encode profile points and mould params into URL search params.
  * @param {Array} profilePoints
@@ -16,10 +39,10 @@ let updateTimer = null;
 function encodeParams(profilePoints, mouldParams) {
   const params = new URLSearchParams();
 
-  // Encode profile as base64 JSON
+  // Encode profile as base64 JSON (safe for non-ASCII)
   try {
     const json = JSON.stringify(profilePoints);
-    params.set('p', btoa(json));
+    params.set('p', safeBase64Encode(json));
   } catch (err) {
     console.warn('[urlSharing] Failed to encode profile:', err);
   }
@@ -146,11 +169,11 @@ export function decodeDesignFromURL() {
   let profilePoints = null;
   let mouldSettings = null;
 
-  // Decode profile
+  // Decode profile (safe for non-ASCII via safeBase64Decode)
   const profileB64 = params.get('p');
   if (profileB64) {
     try {
-      const json = atob(profileB64);
+      const json = safeBase64Decode(profileB64);
       const points = JSON.parse(json);
       profilePoints = validateProfilePoints(points);
       if (!profilePoints) {
@@ -190,6 +213,13 @@ export function updateURL(profilePoints, mouldParams) {
     try {
       const search = encodeParams(profilePoints, mouldParams);
       const newURL = `${window.location.pathname}?${search}`;
+
+      // Warn if URL exceeds safe length for some browsers
+      const fullURL = `${window.location.origin}${newURL}`;
+      if (fullURL.length > URL_LENGTH_WARN_THRESHOLD) {
+        console.warn(`[urlSharing] URL length (${fullURL.length} chars) exceeds ${URL_LENGTH_WARN_THRESHOLD}. Share links may not work in all browsers.`);
+      }
+
       history.replaceState(null, '', newURL);
     } catch (err) {
       console.warn('[urlSharing] Failed to update URL:', err);
@@ -205,5 +235,11 @@ export function updateURL(profilePoints, mouldParams) {
  */
 export function getShareableURL(profilePoints, mouldParams) {
   const search = encodeParams(profilePoints, mouldParams);
-  return `${window.location.origin}${window.location.pathname}?${search}`;
+  const url = `${window.location.origin}${window.location.pathname}?${search}`;
+
+  if (url.length > URL_LENGTH_WARN_THRESHOLD) {
+    console.warn(`[urlSharing] Share URL length (${url.length} chars) exceeds ${URL_LENGTH_WARN_THRESHOLD}. Link may not work in all browsers.`);
+  }
+
+  return url;
 }
