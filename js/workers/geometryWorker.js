@@ -704,7 +704,16 @@ function addAssemblyFeatures(pieces, partPrefix, bottomZ, topZ, innerRadius, out
  * @returns {Object} The hollow mould solid (caller must track for cleanup).
  */
 function buildMouldBySubtraction(mouldProfile, mouldSolid, wallThickness, topZ, track) {
-  // Create offset profile: each X coordinate increased by wallThickness
+  // Create offset profile: each X coordinate increased by wallThickness.
+  //
+  // KNOWN LIMITATION: Bezier control points are offset by shifting their X
+  // coordinates radially, NOT along the true surface normal. For straight or
+  // near-vertical segments this is accurate, but for complex curves (especially
+  // S-curves or highly angled profiles from SVG imports) the resulting wall
+  // thickness will be approximate -- thicker on convex regions and thinner on
+  // concave regions. This is an acceptable trade-off for the fallback path
+  // because shell() (the primary method) handles normals correctly. This
+  // fallback only activates when shell() fails on complex geometry.
   const offsetProfile = mouldProfile.map(pt => {
     const offset = {
       x: pt.x + wallThickness,
