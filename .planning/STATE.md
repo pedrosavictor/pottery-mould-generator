@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 6 IN PROGRESS -- Outer Mould, Ring, and Assembly (1/3 plans done). Next: 06-02 (Ring Generation).
+**Current focus:** Phase 6 IN PROGRESS -- Outer Mould, Ring, and Assembly (2/3 plans done). Next: 06-03 (STL Export).
 
 ## Current Position
 
 Phase: 6 of 9 (Outer Mould, Ring, and Assembly)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-11 -- Completed 06-01-PLAN.md (outer mould generation + splitting)
+Last activity: 2026-02-11 -- Completed 06-02-PLAN.md (ring generation + assembly features)
 
-Progress: [██████████████░░░░░░░░░░░] 58% (14/24 plans)
+Progress: [███████████████░░░░░░░░░░] 62% (15/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
-- Average duration: ~3.5 minutes
-- Total execution time: ~48.8 minutes
+- Total plans completed: 15
+- Average duration: ~3.4 minutes
+- Total execution time: ~51.3 minutes
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [██████████████░░░░░░░░░
 | 3. Profile Editor Extended | 2/2 | ~7m | ~3.5m |
 | 4. Live 3D Preview | 3/3 | ~7.3m | ~2.4m |
 | 5. Inner Mould Generation | 2/2 | ~6.5m | ~3.25m |
-| 6. Outer Mould, Ring, Assembly | 1/3 | ~3m | ~3m |
+| 6. Outer Mould, Ring, Assembly | 2/3 | ~5.5m | ~2.75m |
 
 **Recent Trend:**
-- Last 5 plans: 04-03 (~2.5m), 05-01 (~4m), 05-02 (~2.5m), 06-01 (~3m)
+- Last 5 plans: 05-01 (~4m), 05-02 (~2.5m), 06-01 (~3m), 06-02 (~2.5m)
 - Trend: Stable at ~2.5-4m per plan
 
 *Updated after each plan completion*
@@ -111,6 +111,10 @@ Recent decisions affecting current work:
 - [06-01]: splitSolid() uses makeBox boolean cuts at Y=0 and X=0 planes -- reusable for ring splitting
 - [06-01]: Prefix-based part management (startsWith) for outer-* and ring-* parts
 - [06-01]: removePartsByPrefix cleans up old pieces before adding new ones on split count change
+- [06-02]: Ring is a flat annular disc (washer) spanning inner mould outer radius + 0.5mm to outer mould inner radius
+- [06-02]: Ridge/groove features only on Y=0 split plane for v1 (X=0 plane deferred)
+- [06-02]: Ridges on front/q1/q3, grooves on back/q2/q4 -- consistent convention
+- [06-02]: Assembly features: 2mm radius ridges fused, 2.3mm grooves cut (0.3mm clearance)
 
 ### Pending Todos
 
@@ -127,6 +131,7 @@ Recent decisions affecting current work:
 - Browser validation of mould generation: inner mould should be visibly larger than proof, distinct materials.
 - Browser validation of mould settings: shrinkage slider, wall thickness slider, slip well selector all trigger regeneration.
 - Browser validation of outer mould: cylindrical shell visible around inner mould, cavity gap slider, split count selector, visibility toggle, exploded view separation.
+- Browser validation of ring: flat washer visible below mould assembly, ring checkbox toggles it, ridge/groove features visible on split faces when zoomed in.
 
 ### Blockers/Concerns
 
@@ -138,5 +143,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed 06-01-PLAN.md (outer mould generation + splitting)
+Stopped at: Completed 06-02-PLAN.md (ring generation + assembly features)
 Resume file: None
