@@ -72,6 +72,9 @@ const mouldParams = {
   shrinkageRate: 0.13,    // 13% default
   wallThickness: 2.4,     // mm default
   slipWellType: 'regular', // 'none' | 'regular' | 'tall' (matches HTML default)
+  cavityGap: 25,           // mm default plaster cavity gap
+  splitCount: 2,           // 2 for halves, 4 for quarters
+  outerWallThickness: 2.4, // mm default outer mould wall thickness
 };
 
 // ============================================================
@@ -168,6 +171,21 @@ async function onProfileChange(profilePoints) {
       preview3d.updatePartMesh('proof', mouldResult.proof);
     }
 
+    // Clear previous outer mould pieces (split count may have changed)
+    preview3d.removePartsByPrefix('outer-');
+
+    // Update outer mould pieces (outer-front, outer-back, or outer-q1..q4)
+    for (const [partName, meshData] of Object.entries(mouldResult)) {
+      if (partName.startsWith('outer-') && !partName.endsWith('-error') && meshData.vertices) {
+        preview3d.updatePartMesh(partName, meshData);
+      }
+    }
+
+    // Handle outer mould error
+    if (mouldResult['outer-mould-error']) {
+      console.warn('[app] Outer mould error:', mouldResult['outer-mould-error'].message);
+    }
+
     // Handle shell failure gracefully
     if (mouldResult['inner-mould-error']) {
       console.warn('[app] Inner mould error:', mouldResult['inner-mould-error'].message);
@@ -176,7 +194,7 @@ async function onProfileChange(profilePoints) {
       }
     }
 
-    log('Mould generated: inner-mould + proof');
+    log('Mould generated: inner-mould + outer-mould + proof');
   } catch (err) {
     console.warn('[app] Mould generation error:', err.message);
   }
@@ -469,6 +487,21 @@ async function regenerateMould() {
       preview3d.updatePartMesh('inner-mould', mouldResult['inner-mould']);
     }
 
+    // Clear previous outer mould pieces (split count may have changed)
+    preview3d.removePartsByPrefix('outer-');
+
+    // Update outer mould pieces
+    for (const [partName, meshData] of Object.entries(mouldResult)) {
+      if (partName.startsWith('outer-') && !partName.endsWith('-error') && meshData.vertices) {
+        preview3d.updatePartMesh(partName, meshData);
+      }
+    }
+
+    // Handle outer mould error
+    if (mouldResult['outer-mould-error']) {
+      console.warn('[app] Outer mould error:', mouldResult['outer-mould-error'].message);
+    }
+
     // Handle shell failure gracefully
     if (mouldResult['inner-mould-error']) {
       const errMsg = mouldResult['inner-mould-error'].message;
@@ -482,7 +515,7 @@ async function regenerateMould() {
       statusEl.textContent = 'Ready';
     }
 
-    log(`Mould regenerated (shrinkage: ${(mouldParams.shrinkageRate * 100).toFixed(1)}%, wall: ${mouldParams.wallThickness}mm, well: ${mouldParams.slipWellType})`);
+    log(`Mould regenerated (shrinkage: ${(mouldParams.shrinkageRate * 100).toFixed(1)}%, wall: ${mouldParams.wallThickness}mm, well: ${mouldParams.slipWellType}, cavity: ${mouldParams.cavityGap}mm, split: ${mouldParams.splitCount})`);
   } catch (err) {
     console.warn('[app] Mould regeneration error:', err.message);
     if (statusEl) {
@@ -537,6 +570,29 @@ function initMouldSettings() {
   if (selectSlipWell) {
     selectSlipWell.addEventListener('change', () => {
       mouldParams.slipWellType = selectSlipWell.value;
+      regenerateMould();
+    });
+  }
+
+  // Wire cavity gap slider
+  const sliderCavityGap = document.getElementById('slider-cavity-gap');
+  const valCavityGap = document.getElementById('val-cavity-gap');
+  if (sliderCavityGap) {
+    mouldParams.cavityGap = parseFloat(sliderCavityGap.value);
+    sliderCavityGap.addEventListener('input', () => {
+      const mm = parseFloat(sliderCavityGap.value);
+      if (valCavityGap) valCavityGap.textContent = mm;
+      mouldParams.cavityGap = mm;
+      regenerateMould();
+    });
+  }
+
+  // Wire split count selector
+  const selectSplitCount = document.getElementById('select-split-count');
+  if (selectSplitCount) {
+    mouldParams.splitCount = parseInt(selectSplitCount.value, 10);
+    selectSplitCount.addEventListener('change', () => {
+      mouldParams.splitCount = parseInt(selectSplitCount.value, 10);
       regenerateMould();
     });
   }
@@ -695,7 +751,15 @@ function initViewControls() {
     });
   }
 
-  // Outer mould and ring are disabled for now (Phase 6).
+  // Outer mould visibility toggle (controls all outer-* parts)
+  const chkOuter = document.getElementById('chk-show-outer');
+  if (chkOuter) {
+    chkOuter.addEventListener('change', () => {
+      preview3d.setPartGroupVisibility('outer-', chkOuter.checked);
+    });
+  }
+
+  // Ring checkbox is disabled for now (enabled in Plan 06-02).
 
   // --- Assembled / Exploded view buttons ---
   const btnAssembled = document.getElementById('btn-assembled');
@@ -841,6 +905,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (mouldResult['inner-mould']) {
           preview3d.updatePartMesh('inner-mould', mouldResult['inner-mould']);
           log('Inner mould generated');
+        }
+        // Render outer mould pieces from initial generation
+        for (const [partName, meshData] of Object.entries(mouldResult)) {
+          if (partName.startsWith('outer-') && !partName.endsWith('-error') && meshData.vertices) {
+            preview3d.updatePartMesh(partName, meshData);
+          }
+        }
+        if (mouldResult['outer-front'] || mouldResult['outer-q1']) {
+          log('Outer mould generated');
         }
       }
     } catch (upgradeErr) {

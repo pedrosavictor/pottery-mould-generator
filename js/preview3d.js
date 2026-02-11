@@ -133,7 +133,7 @@ function createTerraCottaMaterial() {
  * @returns {THREE.MeshStandardMaterial}
  */
 function createMaterialForPart(partName) {
-  if (partName === 'inner-mould' || partName === 'outer-mould') {
+  if (partName.startsWith('inner-mould') || partName.startsWith('outer-') || partName.startsWith('ring-')) {
     return new THREE.MeshStandardMaterial(MOULD_MATERIAL_PARAMS);
   }
   if (partName === 'proof') {
@@ -434,6 +434,35 @@ export function setPartVisibility(partName, visible) {
 }
 
 /**
+ * Set visibility for all parts matching a name prefix.
+ *
+ * @param {string} prefix - Part name prefix (e.g., 'outer-' matches 'outer-front', 'outer-back').
+ * @param {boolean} visible - Whether matching parts should be visible.
+ */
+export function setPartGroupVisibility(prefix, visible) {
+  for (const [name, entry] of parts) {
+    if (name.startsWith(prefix)) {
+      entry.group.visible = visible;
+    }
+  }
+}
+
+/**
+ * Remove and dispose all parts matching a name prefix.
+ * Used when split count changes (halves -> quarters or vice versa).
+ *
+ * @param {string} prefix - Part name prefix to match.
+ */
+export function removePartsByPrefix(prefix) {
+  for (const [name, entry] of parts) {
+    if (name.startsWith(prefix)) {
+      disposePart(entry);
+      parts.delete(name);
+    }
+  }
+}
+
+/**
  * Dispose and remove all parts from the scene.
  */
 export function clearAllParts() {
@@ -479,11 +508,21 @@ let explodedView = false;
  * When more parts are added (Phases 5-6), their offsets go here.
  */
 const EXPLODED_OFFSETS = {
-  'pot':         0,
-  'inner-mould': 100,
-  'outer-mould': 200,
-  'ring':        300,
-  'proof':       400,
+  'pot':          0,
+  'inner-mould':  100,
+  'outer-front':  200,
+  'outer-back':   200,
+  'outer-q1':     200,
+  'outer-q2':     200,
+  'outer-q3':     200,
+  'outer-q4':     200,
+  'ring-front':   -50,
+  'ring-back':    -50,
+  'ring-q1':      -50,
+  'ring-q2':      -50,
+  'ring-q3':      -50,
+  'ring-q4':      -50,
+  'proof':        300,
 };
 
 /**

@@ -109,6 +109,19 @@
               <option value="tall">Tall (50mm)</option>
             </select>
           </div>
+          <div class="slider-field">
+            <label for="slider-cavity-gap">Plaster cavity</label>
+            <input type="range" id="slider-cavity-gap" min="10" max="50" step="1" value="25" />
+            <span class="slider-value" id="val-cavity-gap">25</span>
+            <span class="slider-unit">mm</span>
+          </div>
+          <div class="preset-field">
+            <label for="select-split-count">Mould split</label>
+            <select id="select-split-count">
+              <option value="2" selected>Halves (2 pieces)</option>
+              <option value="4">Quarters (4 pieces)</option>
+            </select>
+          </div>
         </div>
 
         <div id="import-controls">
@@ -143,7 +156,7 @@
               <input type="checkbox" id="chk-show-inner" checked> Inner Mould
             </label>
             <label class="toggle-item">
-              <input type="checkbox" id="chk-show-outer" checked disabled> Outer Mould
+              <input type="checkbox" id="chk-show-outer" checked> Outer Mould
             </label>
             <label class="toggle-item">
               <input type="checkbox" id="chk-show-ring" checked disabled> Ring
