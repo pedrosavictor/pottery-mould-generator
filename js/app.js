@@ -104,6 +104,26 @@ function log(msg) {
 }
 
 // ============================================================
+// Part Visibility Sync
+// ============================================================
+
+/**
+ * Sync 3D part visibility with the current state of the view checkboxes.
+ * Called after mould parts are recreated (they default to hidden).
+ */
+function syncPartVisibilityWithCheckboxes() {
+  const chkInner = document.getElementById('chk-show-inner');
+  const chkOuter = document.getElementById('chk-show-outer');
+  const chkRing = document.getElementById('chk-show-ring');
+  const chkProof = document.getElementById('chk-show-proof');
+
+  if (chkInner) preview3d.setPartVisibility('inner-mould', chkInner.checked);
+  if (chkOuter) preview3d.setPartGroupVisibility('outer-', chkOuter.checked);
+  if (chkRing) preview3d.setPartGroupVisibility('ring-', chkRing.checked);
+  if (chkProof) preview3d.setPartVisibility('proof', chkProof.checked);
+}
+
+// ============================================================
 // Profile Editor -> 3D Preview pipeline
 // ============================================================
 
@@ -214,6 +234,9 @@ async function onProfileChange(profilePoints) {
         statusEl.textContent = 'Mould warning -- ' + mouldResult['inner-mould-error'].message;
       }
     }
+
+    // Sync visibility with checkbox state (parts are created hidden by default)
+    syncPartVisibilityWithCheckboxes();
 
     log('Mould generated: inner-mould + outer-mould + ring + proof');
     updatePlasterCalculator();
@@ -551,6 +574,9 @@ async function regenerateMould() {
     } else if (statusEl) {
       statusEl.textContent = 'Ready';
     }
+
+    // Sync visibility with checkbox state (parts are created hidden by default)
+    syncPartVisibilityWithCheckboxes();
 
     log(`Mould regenerated (shrinkage: ${(mouldParams.shrinkageRate * 100).toFixed(1)}%, wall: ${mouldParams.wallThickness}mm, well: ${mouldParams.slipWellType}, cavity: ${mouldParams.cavityGap}mm, split: ${mouldParams.splitCount})`);
     updatePlasterCalculator();
@@ -1398,6 +1424,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (mouldResult['ring-front'] || mouldResult['ring-q1']) {
           log('Ring generated');
         }
+        syncPartVisibilityWithCheckboxes();
       }
       updatePlasterCalculator();
     } catch (upgradeErr) {

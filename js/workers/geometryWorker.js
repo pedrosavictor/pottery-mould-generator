@@ -492,12 +492,15 @@ function generateOuterMould(scaledPoints, mouldProfile, mouldParams, track) {
   const outerMouldInnerRadius = innerMouldOuterRadius + cavityGap;
   const outerMouldOuterRadius = outerMouldInnerRadius + outerWallThickness;
 
-  // Height matches the full mould profile (including slip well)
+  // Outer mould extends from inner mould bottom to 25mm ABOVE inner mould top.
+  // The extra height above the inner mould creates an open-top pouring space
+  // for plaster (like ShapeCast). Plaster is poured from above into the cavity.
+  const pourExtension = mouldParams.pourExtension || 25;
   const bottomZ = mouldProfile[0].y;
-  const topZ = mouldProfile[mouldProfile.length - 1].y;
+  const topZ = mouldProfile[mouldProfile.length - 1].y + pourExtension;
 
   // Build outer mould as a revolved rectangular cross-section.
-  // This creates a cylindrical shell (uniform radius, open top, closed bottom).
+  // This creates a cylindrical shell (uniform radius, open top and bottom).
   // The profile is: inner-bottom -> inner-top -> outer-top -> outer-bottom
   // When closed by revolveClosedProfile, the rectangle revolves into an annular tube.
   const outerProfile = [
@@ -552,95 +555,109 @@ function generateRing(scaledPoints, mouldProfile, mouldParams, track) {
     { x: ringOuterRadius, y: bottomZ - ringHeight, type: 'line' },
   ];
 
-  let ringSolid = track(revolveClosedProfile(ringProfile));
+  const ringSolid = track(revolveClosedProfile(ringProfile));
 
-  // Pour hole: cylindrical hole through the ring for plaster introduction.
-  // Positioned at the midpoint of ring radial width, on the Y=0 plane.
-  // Diameter = 30mm (15mm radius) -- large enough for plaster to flow.
-  const pourHoleRadius = mouldParams.pourHoleRadius || 15;
-  const pourHoleMidR = (ringInnerRadius + ringOuterRadius) / 2;
-
-  // Only add pour hole if the ring is wide enough (hole diameter < ring width)
-  if (pourHoleRadius * 2 < (ringOuterRadius - ringInnerRadius) * 0.9) {
-    const pourHoleTool = track(
-      makeCylinder(
-        pourHoleRadius,
-        ringHeight + 4,  // extend beyond ring top and bottom to ensure clean cut
-        [pourHoleMidR, 0, bottomZ - ringHeight - 2],
-        [0, 0, 1]        // cylinder axis along Z (vertical)
-      )
-    );
-    ringSolid = track(ringSolid.cut(pourHoleTool));
-  }
+  // No pour hole in ring -- plaster is poured from the open top of the
+  // outer mould (which extends 25mm above the inner mould).
 
   // Split to match outer mould configuration
   return splitSolid(ringSolid, splitCount, track);
 }
 
 /**
- * Add ridge/groove assembly features to split pieces.
+ * Add binder-clip flange tabs to split pieces.
  *
- * Ridges: 2mm radius cylinders fused onto one piece's split face.
- * Grooves: (2mm + clearance) radius cylinders cut from the mating piece.
- * Positioned at 1/3 and 2/3 of the piece height along the split face.
+ * Each half gets a continuous rectangular flange on each split face that
+ * extends past the split plane by tabDepth (1.5mm). When two halves are
+ * assembled, the opposing flanges create a combined ~3mm lip that medium
+ * binder clips can grip. The flanges also seal the split against plaster
+ * leakage during pouring.
  *
- * For halves: ridges on front (Y>0 face at Y=0), grooves on back (Y<0 face at Y=0).
- * The cylinders run along the X axis (horizontal) on the Y=0 split face.
+ * Flanges span from innerRadius to outerRadius + flangeExtend, running
+ * the full height of the part. The flangeExtend (5mm) past the outer
+ * surface provides extra clamping surface for binder clips.
  *
  * @param {Array<{ key: string, solid: Object }>} pieces - Split pieces from splitSolid().
  * @param {string} partPrefix - 'outer' or 'ring' for naming.
  * @param {number} bottomZ - Bottom Z coordinate of the part.
  * @param {number} topZ - Top Z coordinate of the part.
- * @param {number} innerRadius - Inner radius of the part (for positioning ridges).
- * @param {number} outerRadius - Outer radius of the part (for positioning ridges).
- * @param {Object} mouldParams - Contains clearance, splitCount.
+ * @param {number} innerRadius - Inner radius of the part.
+ * @param {number} outerRadius - Outer radius of the part.
+ * @param {Object} mouldParams - Contains splitCount.
  * @param {Function} track - The withCleanup track function.
- * @returns {Array<{ key: string, solid: Object }>} Pieces with assembly features.
+ * @returns {Array<{ key: string, solid: Object }>} Pieces with flange tabs.
  */
 function addAssemblyFeatures(pieces, partPrefix, bottomZ, topZ, innerRadius, outerRadius, mouldParams, track) {
-  const {
-    clearance = 0.3,
-    splitCount = 2,
-  } = mouldParams;
-
-  const ridgeRadius = 2.0;  // mm
-  const grooveRadius = ridgeRadius + clearance;
-  const height = topZ - bottomZ;
-  const midRadius = (innerRadius + outerRadius) / 2;
-
-  // Ridge positions: at 1/3 and 2/3 height
-  const ridgeZ1 = bottomZ + height / 3;
-  const ridgeZ2 = bottomZ + (2 * height) / 3;
-  const ridgeLength = (outerRadius - innerRadius) * 0.8; // 80% of radial width
-  const ridgeStartX = midRadius - ridgeLength / 2;
-
-  // For halves: front gets ridges on its Y=0 face, back gets grooves
-  // Ridge cylinders run along X axis, centered on the Y=0 plane
-  // They extend from ridgeStartX to ridgeStartX + ridgeLength along X
-  // positioned at Y=0, at heights ridgeZ1 and ridgeZ2
+  const tabDepth = 1.5;      // mm past split plane (binder clip grip depth)
+  const flangeExtend = 5.0;  // mm outward past outer surface (extra grip area)
+  const attach = 0.5;        // mm overlap into the half's body (for solid fuse)
+  const { splitCount = 2 } = mouldParams;
 
   const result = [];
 
   for (const piece of pieces) {
     let solid = piece.solid;
-    const isRidgePiece = (piece.key === 'front' || piece.key === 'q1' || piece.key === 'q3');
-    const isGroovePiece = (piece.key === 'back' || piece.key === 'q2' || piece.key === 'q4');
 
-    if (isRidgePiece) {
-      // Add ridges at two heights on the Y=0 face
-      // Cylinders along X axis: makeCylinder(radius, length, [startX, y, z], [1, 0, 0])
-      const ridge1 = track(makeCylinder(ridgeRadius, ridgeLength, [ridgeStartX, 0, ridgeZ1], [1, 0, 0]));
-      solid = track(solid.fuse(ridge1));
-      const ridge2 = track(makeCylinder(ridgeRadius, ridgeLength, [ridgeStartX, 0, ridgeZ2], [1, 0, 0]));
-      solid = track(solid.fuse(ridge2));
-    }
+    if (splitCount === 2) {
+      // Halves split at Y=0: front (Y>0) and back (Y<0)
+      const isFront = (piece.key === 'front');
+      const yMin = isFront ? -tabDepth : -attach;
+      const yMax = isFront ? attach : tabDepth;
 
-    if (isGroovePiece) {
-      // Cut grooves at matching positions (slightly larger radius for clearance)
-      const groove1 = track(makeCylinder(grooveRadius, ridgeLength + 2, [ridgeStartX - 1, 0, ridgeZ1], [1, 0, 0]));
-      solid = track(solid.cut(groove1));
-      const groove2 = track(makeCylinder(grooveRadius, ridgeLength + 2, [ridgeStartX - 1, 0, ridgeZ2], [1, 0, 0]));
-      solid = track(solid.cut(groove2));
+      // Right seam flange (positive X side)
+      const rightFlange = track(makeBox(
+        [innerRadius, yMin, bottomZ],
+        [outerRadius + flangeExtend, yMax, topZ]
+      ));
+      solid = track(solid.fuse(rightFlange));
+
+      // Left seam flange (negative X side)
+      const leftFlange = track(makeBox(
+        [-(outerRadius + flangeExtend), yMin, bottomZ],
+        [-innerRadius, yMax, topZ]
+      ));
+      solid = track(solid.fuse(leftFlange));
+
+    } else if (splitCount === 4) {
+      // Quarters split at Y=0 and X=0
+      const isYPos = (piece.key === 'q1' || piece.key === 'q2');
+      const isXPos = (piece.key === 'q1' || piece.key === 'q3');
+
+      // Y=0 face flange (only on this quarter's X side)
+      const yMin = isYPos ? -tabDepth : -attach;
+      const yMax = isYPos ? attach : tabDepth;
+
+      if (isXPos) {
+        const yFlange = track(makeBox(
+          [innerRadius, yMin, bottomZ],
+          [outerRadius + flangeExtend, yMax, topZ]
+        ));
+        solid = track(solid.fuse(yFlange));
+      } else {
+        const yFlange = track(makeBox(
+          [-(outerRadius + flangeExtend), yMin, bottomZ],
+          [-innerRadius, yMax, topZ]
+        ));
+        solid = track(solid.fuse(yFlange));
+      }
+
+      // X=0 face flange (only on this quarter's Y side)
+      const xMin = isXPos ? -tabDepth : -attach;
+      const xMax = isXPos ? attach : tabDepth;
+
+      if (isYPos) {
+        const xFlange = track(makeBox(
+          [xMin, innerRadius, bottomZ],
+          [xMax, outerRadius + flangeExtend, topZ]
+        ));
+        solid = track(solid.fuse(xFlange));
+      } else {
+        const xFlange = track(makeBox(
+          [xMin, -(outerRadius + flangeExtend), bottomZ],
+          [xMax, -innerRadius, topZ]
+        ));
+        solid = track(solid.fuse(xFlange));
+      }
     }
 
     result.push({ key: piece.key, solid });
@@ -725,9 +742,10 @@ function generateMouldParts(profilePoints, mouldParams) {
     try {
       const outerPieces = generateOuterMould(scaledPoints, mouldProfile, mouldParams, track);
 
-      // Add assembly features (ridges/grooves) to outer mould split faces
+      // Add binder-clip flanges to outer mould split faces
+      const pourExtension = mouldParams.pourExtension || 25;
       const outerBottomZ = mouldProfile[0].y;
-      const outerTopZ = mouldProfile[mouldProfile.length - 1].y;
+      const outerTopZ = mouldProfile[mouldProfile.length - 1].y + pourExtension;
       const maxProfileRadius = Math.max(...scaledPoints.map(p => p.x));
       const outerInnerR = maxProfileRadius + wallThickness + cavityGap;
       const outerOuterR = outerInnerR + (outerWallThickness);
@@ -749,17 +767,9 @@ function generateMouldParts(profilePoints, mouldParams) {
     try {
       const ringPieces = generateRing(scaledPoints, mouldProfile, mouldParams, track);
 
-      // Add assembly features to ring pieces
-      const ringBottomZ = mouldProfile[0].y - (ringHeight);
-      const ringTopZ = mouldProfile[0].y;
-      const ringMaxR = Math.max(...scaledPoints.map(p => p.x));
-      const ringInnerR = ringMaxR + wallThickness + 0.5;
-      const ringOuterR = ringMaxR + wallThickness + cavityGap;
-      const ridgedRingPieces = addAssemblyFeatures(
-        ringPieces, 'ring', ringBottomZ, ringTopZ, ringInnerR, ringOuterR, mouldParams, track
-      );
-
-      for (const piece of ridgedRingPieces) {
+      // Ring pieces have no assembly features -- print whole if possible,
+      // or glue split pieces with CA (cyanoacrylate) per ShapeCast guidance.
+      for (const piece of ringPieces) {
         results[`ring-${piece.key}`] = toTransferableMesh(piece.solid.mesh(meshOpts));
       }
     } catch (ringErr) {
@@ -957,8 +967,9 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
     // Outer mould pieces
     try {
       const outerPieces = generateOuterMould(scaledPoints, mouldProfile, mouldParams, track);
+      const pourExtension = mouldParams.pourExtension || 25;
       const outerBottomZ = mouldProfile[0].y;
-      const outerTopZ = mouldProfile[mouldProfile.length - 1].y;
+      const outerTopZ = mouldProfile[mouldProfile.length - 1].y + pourExtension;
       const maxProfileRadius = Math.max(...scaledPoints.map(p => p.x));
       const outerInnerR = maxProfileRadius + wallThickness + cavityGap;
       const outerOuterR = outerInnerR + outerWallThickness;
@@ -975,18 +986,10 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
       console.warn('[worker] Export: outer mould failed:', safeErrorMessage(outerErr));
     }
 
-    // Ring pieces
+    // Ring pieces (no assembly features -- glue with CA if split)
     try {
       const ringPieces = generateRing(scaledPoints, mouldProfile, mouldParams, track);
-      const ringBottomZ = mouldProfile[0].y - ringHeight;
-      const ringTopZ = mouldProfile[0].y;
-      const ringMaxR = Math.max(...scaledPoints.map(p => p.x));
-      const ringInnerR = ringMaxR + wallThickness + 0.5;
-      const ringOuterR = ringMaxR + wallThickness + cavityGap;
-      const ridgedRingPieces = addAssemblyFeatures(
-        ringPieces, 'ring', ringBottomZ, ringTopZ, ringInnerR, ringOuterR, mouldParams, track
-      );
-      for (const piece of ridgedRingPieces) {
+      for (const piece of ringPieces) {
         const name = `ring-${piece.key}`;
         stlBlobMap[name] = piece.solid.blobSTL({ binary: true, ...meshOpts });
         stepBlobMap[name] = safeStepBlob(piece.solid);
