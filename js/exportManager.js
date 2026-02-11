@@ -56,13 +56,6 @@ function generateReadme({ partNames, mouldParams, volumes, resolution, includeSt
     : mouldParams.slipWellType === 'tall' ? 'Tall (50mm)' : 'Regular (25mm)';
 
   let text = '';
-  if (userTier !== 'pro') {
-    text += '========================================\n';
-    text += '  FREE TIER -- moulds.thepotteryacademy.com\n';
-    text += '  Upgrade to Pro for STEP files, custom\n';
-    text += '  shrinkage, and clean exports.\n';
-    text += '========================================\n\n';
-  }
   text += 'POTTERY MOULD PARTS\n';
   text += '====================\n';
   text += '\n';
@@ -193,7 +186,6 @@ export async function downloadMouldZip(profilePoints, mouldParams, resolution, o
   onProgress?.('Creating ZIP...');
   const blob = await zip.generateAsync({ type: 'blob' });
 
-  const suffix = userTier === 'pro' ? '' : '-FREE';
-  triggerDownload(blob, `${projectName}${suffix}.zip`);
+  triggerDownload(blob, `${projectName}.zip`);
   onProgress?.('Done');
 }

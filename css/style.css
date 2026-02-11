@@ -616,23 +616,6 @@ aside#controls h3 {
   cursor: not-allowed;
 }
 
-.btn-pro {
-  background: var(--sage);
-  position: relative;
-}
-
-.btn-pro::after {
-  content: 'PRO';
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 0.6rem;
-  background: rgba(0,0,0,0.2);
-  padding: 1px 4px;
-  border-radius: 2px;
-}
-
 .export-status {
   font-size: 0.8rem;
   color: var(--sage);

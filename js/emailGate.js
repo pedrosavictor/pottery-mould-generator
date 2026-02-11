@@ -5,6 +5,7 @@
  */
 
 import { createUser, logDownload, subscribeToKitForm, verifyKitSubscriber } from './supabaseClient.js';
+import { DEV_MODE } from './authState.js';
 
 // LocalStorage keys
 const STORAGE_KEYS = {
@@ -76,6 +77,12 @@ export function initEmailGate() {
  * @returns {Promise<{canDownload: boolean, userId?: string, email?: string, verified?: boolean, needsVerification?: boolean}>}
  */
 export async function checkEmailGate() {
+  // Bypass email gate entirely in DEV_MODE
+  if (DEV_MODE) {
+    console.log('DEV_MODE: bypassing email gate');
+    return { canDownload: true, userId: 'dev-mode', email: 'dev@devmode', verified: true };
+  }
+
   // Bypass email gate for local development
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     console.log('Local development: bypassing email gate');

@@ -9,6 +9,10 @@
  * Future: Stripe subscription check.
  */
 
+// --- DEV_MODE: Set to true to bypass all Pro/subscription/email gating ---
+// Flip to false before production deployment.
+export const DEV_MODE = true;
+
 const STORAGE_KEYS = {
   EMAIL: 'potteryAcademy_email',
   TIER: 'potteryAcademy_tier',
@@ -20,6 +24,7 @@ const STORAGE_KEYS = {
  * @returns {'free'|'pro'}
  */
 export function getUserTier() {
+  if (DEV_MODE) return 'pro';
   const tier = localStorage.getItem(STORAGE_KEYS.TIER);
   if (tier === 'pro') return 'pro';
   return 'free';
@@ -30,6 +35,7 @@ export function getUserTier() {
  * @returns {boolean}
  */
 export function isPro() {
+  if (DEV_MODE) return true;
   return getUserTier() === 'pro';
 }
 

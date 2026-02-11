@@ -592,10 +592,12 @@ async function regenerateMould() {
 
 /**
  * Apply Pro gating to a slider: disable for free users with visual feedback.
+ * NOTE: Disabled during development (DEV_MODE bypasses isPro()).
  * @param {HTMLInputElement} slider
  * @param {HTMLElement} label - The label element to annotate
  */
 function gateSliderForPro(slider, label) {
+  // With DEV_MODE on, isPro() returns true so gating is bypassed.
   if (!isPro() && slider) {
     slider.disabled = true;
     slider.style.opacity = '0.4';
@@ -1054,40 +1056,32 @@ function initExportControls() {
     });
   }
 
-  // STEP button (Pro gating)
+  // STEP button
   const btnStep = document.getElementById('btn-download-step');
   if (btnStep) {
     btnStep.addEventListener('click', async () => {
-      if (isPro()) {
-        // Pro user: download with STEP files included
-        if (!lastProfilePoints || lastProfilePoints.length < 2) {
-          if (exportStatus) exportStatus.textContent = 'No profile to export';
-          return;
-        }
-        btnStep.disabled = true;
-        btnStep.textContent = 'Exporting STEP...';
-        try {
-          await downloadMouldZip(lastProfilePoints, mouldParams, exportResolution, {
-            includeStep: true,
-            userTier: 'pro',
-            onProgress: (msg) => {
-              if (exportStatus) exportStatus.textContent = msg;
-            },
-          });
-          if (exportStatus) exportStatus.textContent = 'STEP download started!';
-          setTimeout(() => { if (exportStatus) exportStatus.textContent = ''; }, 3000);
-        } catch (err) {
-          console.error('[app] STEP export error:', err);
-          if (exportStatus) exportStatus.textContent = 'STEP export failed: ' + err.message;
-        } finally {
-          btnStep.disabled = false;
-          btnStep.textContent = 'Download STEP (Pro)';
-        }
-      } else {
-        if (exportStatus) {
-          exportStatus.textContent = 'STEP export available with Pro subscription';
-          setTimeout(() => { exportStatus.textContent = ''; }, 3000);
-        }
+      if (!lastProfilePoints || lastProfilePoints.length < 2) {
+        if (exportStatus) exportStatus.textContent = 'No profile to export';
+        return;
+      }
+      btnStep.disabled = true;
+      btnStep.textContent = 'Exporting STEP...';
+      try {
+        await downloadMouldZip(lastProfilePoints, mouldParams, exportResolution, {
+          includeStep: true,
+          userTier: getUserTier(),
+          onProgress: (msg) => {
+            if (exportStatus) exportStatus.textContent = msg;
+          },
+        });
+        if (exportStatus) exportStatus.textContent = 'STEP download started!';
+        setTimeout(() => { if (exportStatus) exportStatus.textContent = ''; }, 3000);
+      } catch (err) {
+        console.error('[app] STEP export error:', err);
+        if (exportStatus) exportStatus.textContent = 'STEP export failed: ' + err.message;
+      } finally {
+        btnStep.disabled = false;
+        btnStep.textContent = 'Download STEP';
       }
     });
   }
@@ -1135,10 +1129,22 @@ function showNotification(message, type = 'info', duration = 5000) {
 
 /**
  * Update the header auth display with current user state.
+ * In DEV_MODE, hides tier badge entirely (no "Free"/"Pro" shown).
  */
 function updateAuthDisplay() {
   const emailEl = document.getElementById('user-email-display');
   const tierEl = document.getElementById('user-tier-badge');
+
+  // In dev mode, hide the tier badge and email -- no auth UI clutter
+  if (isPro() && !isLoggedIn()) {
+    // DEV_MODE: isPro() is true but no one is logged in -- hide auth display
+    if (emailEl) emailEl.textContent = '';
+    if (tierEl) {
+      tierEl.textContent = '';
+      tierEl.className = '';
+    }
+    return;
+  }
 
   if (isLoggedIn()) {
     const email = getStoredEmail();
