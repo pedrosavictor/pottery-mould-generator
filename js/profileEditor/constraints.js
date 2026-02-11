@@ -280,6 +280,16 @@ function checkUndercut(path, transform, footZoneHeight, violations) {
 function checkSelfIntersection(path, transform, violations) {
   if (!path.curves || path.curves.length < 3) return;
 
+  // Guard: skip O(n^2) intersection check for complex profiles (e.g., detailed
+  // SVG imports). For typical pottery profiles (5-10 curves) this is fine, but
+  // comparing every curve pair becomes expensive beyond ~30 curves.
+  if (path.curves.length > 30) {
+    console.warn(
+      `[constraints] Skipping self-intersection check: profile has ${path.curves.length} curves (max 30 for O(n^2) check).`
+    );
+    return;
+  }
+
   for (let i = 0; i < path.curves.length; i++) {
     for (let j = i + 2; j < path.curves.length; j++) {
       const intersections = path.curves[i].getIntersections(path.curves[j]);

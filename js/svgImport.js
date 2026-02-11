@@ -29,9 +29,20 @@
  * @returns {Array<ProfilePoint>} Profile points from foot (bottom) to rim (top).
  * @throws {Error} If the SVG contains no usable path element.
  */
+/** Maximum allowed SVG file size: 1 MB. */
+const MAX_SVG_SIZE_BYTES = 1024 * 1024;
+
 export function importSVGFile(svgString) {
   if (!svgString || typeof svgString !== 'string') {
     throw new Error('Invalid SVG input: expected a non-empty string.');
+  }
+
+  // Reject excessively large SVG files to prevent browser hangs
+  // during Paper.js parsing. 1 MB is generous for a pottery profile SVG.
+  if (svgString.length > MAX_SVG_SIZE_BYTES) {
+    throw new Error(
+      `SVG file is too large (${(svgString.length / 1024).toFixed(0)} KB). Maximum size is 1 MB.`
+    );
   }
 
   // Parse SVG without inserting into the canvas.

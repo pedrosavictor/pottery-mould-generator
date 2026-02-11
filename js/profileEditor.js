@@ -281,6 +281,11 @@ export function initProfileEditor(canvasId, options = {}) {
 
   // --- Keyboard shortcuts for undo/redo ---
   document.addEventListener('keydown', (e) => {
+    // Let the browser handle native undo/redo in text inputs and textareas.
+    // Without this check, Ctrl+Z while typing in a dimension field would
+    // undo the profile edit instead of undoing the text change.
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
     const isMeta = e.metaKey || e.ctrlKey;
     if (!isMeta) return;
 

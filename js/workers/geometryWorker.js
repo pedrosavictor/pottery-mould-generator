@@ -733,10 +733,12 @@ function buildMouldBySubtraction(mouldProfile, mouldSolid, wallThickness, topZ, 
 
   // Cut the top cap to create the mould opening.
   // The cap is the thin annular disc at Z=topZ between inner and outer surfaces.
-  // Use a thin cutter centered on topZ to remove only the cap, not the side walls.
+  // Cutter thickness must exceed wallThickness to ensure complete cap removal,
+  // especially for walls thicker than ~5mm where a fixed 2mm cutter would fail.
   const maxR = Math.max(...mouldProfile.map(p => p.x)) + wallThickness + 5;
+  const cutterThickness = Math.max(2, wallThickness + 1);
   const topCutter = track(
-    makeCylinder(maxR, 2, [0, 0, topZ - 0.5], [0, 0, 1])
+    makeCylinder(maxR, cutterThickness, [0, 0, topZ - cutterThickness / 2], [0, 0, 1])
   );
   hollow = track(hollow.cut(topCutter));
 
@@ -760,7 +762,7 @@ function buildMouldBySubtraction(mouldProfile, mouldSolid, wallThickness, topZ, 
 function generateMouldParts(profilePoints, mouldParams) {
   const {
     shrinkageRate = 0.13,
-    wallThickness = 2.4,
+    wallThickness: rawWallThickness = 2.4,
     slipWellType = 'none',
     cavityGap = 25,
     splitCount = 2,
@@ -768,6 +770,10 @@ function generateMouldParts(profilePoints, mouldParams) {
     clearance = 0.3,
     ringHeight = 8,
   } = mouldParams || {};
+
+  // Clamp wallThickness to a minimum of 0.5mm. A zero-thickness shell
+  // would create a degenerate solid, and very thin walls are unprintable.
+  const wallThickness = Math.max(0.5, rawWallThickness);
 
   const meshOpts = { tolerance: 0.1, angularTolerance: 0.3 };
   const results = {};
