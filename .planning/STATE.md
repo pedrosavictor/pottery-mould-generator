@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 6 COMPLETE -- Outer Mould, Ring, and Assembly (3/3 plans done). Next: Phase 7 (STL Export).
+**Current focus:** Phase 10 COMPLETE -- Console Bug Fixes (1/1 plans done). All phases complete.
 
 ## Current Position
 
-Phase: 6 of 9 (Outer Mould, Ring, and Assembly)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-11 -- Completed 06-03-PLAN.md (pour hole + clearance/wall-thickness UI controls)
+Phase: 10 of 10 (Console Bug Fixes)
+Plan: 1 of 1 in current phase
+Status: All phases complete
+Last activity: 2026-02-11 -- Completed 10-01-PLAN.md (annular revolution fix, scene init ordering, safe error messages)
 
-Progress: [████████████████░░░░░░░░░] 66% (16/24 plans)
+Progress: [█████████████████████████] 100% (25/25 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
-- Average duration: ~3.3 minutes
-- Total execution time: ~52.8 minutes
+- Total plans completed: 25
+- Average duration: ~3.0 minutes
+- Total execution time: ~54.8 minutes
 
 **By Phase:**
 
@@ -33,9 +33,13 @@ Progress: [████████████████░░░░░░░
 | 4. Live 3D Preview | 3/3 | ~7.3m | ~2.4m |
 | 5. Inner Mould Generation | 2/2 | ~6.5m | ~3.25m |
 | 6. Outer Mould, Ring, Assembly | 3/3 | ~7m | ~2.3m |
+| 7. STL Export | 3/3 | -- | -- |
+| 8. Freemium + Auth | 2/2 | -- | -- |
+| 9. Branding + Polish | 3/3 | -- | -- |
+| 10. Console Bug Fixes | 1/1 | ~2m | ~2m |
 
 **Recent Trend:**
-- Last 5 plans: 05-02 (~2.5m), 06-01 (~3m), 06-02 (~2.5m), 06-03 (~1.5m)
+- Last 5 plans: 09-01, 09-02, 09-03, 10-01 (~2m)
 - Trend: Stable at ~1.5-3m per plan
 
 *Updated after each plan completion*
@@ -118,6 +122,9 @@ Recent decisions affecting current work:
 - [06-03]: Pour hole cut from ring BEFORE splitting so both halves get matching semicircular notches
 - [06-03]: Pour hole positioned at midpoint of ring radial width, 30mm diameter, on Y=0 plane
 - [06-03]: ringHeight and pourHoleRadius have defaults but no UI sliders in v1
+- [10-01]: revolveClosedProfile() closes profile directly (pen.close) for annular shapes -- no axis detour
+- [10-01]: safeErrorMessage() helper centralizes WASM error extraction across all catch blocks
+- [10-01]: Scene init moved before parametric controls to prevent premature onProfileChange
 
 ### Pending Todos
 
@@ -147,5 +154,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed 06-03-PLAN.md (pour hole + clearance/wall-thickness UI controls). Phase 6 complete.
+Stopped at: Completed 10-01-PLAN.md (console bug fixes). All 25 plans complete.
 Resume file: None
