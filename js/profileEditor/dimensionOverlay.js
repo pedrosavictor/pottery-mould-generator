@@ -124,11 +124,12 @@ export function renderDimensions(profilePoints, overlayLayer, transform) {
   const axisCanvas = transform.toCanvas(0, 0);
 
   // --- Height dimension (vertical line on the right) ---
-  const heightX = Math.max(
-    rimCanvas.x,
-    widestCanvas.x,
-    footCanvas.x
-  ) + DIM_OFFSET_PX;
+  // UI-18: Clamp to canvas width minus padding so labels don't clip on mobile
+  const canvasWidth = overlayLayer.view ? overlayLayer.view.size.width : Infinity;
+  const heightX = Math.min(
+    Math.max(rimCanvas.x, widestCanvas.x, footCanvas.x) + DIM_OFFSET_PX,
+    canvasWidth - 50  // reserve 50px for the label text
+  );
 
   drawDimensionLine(
     group,

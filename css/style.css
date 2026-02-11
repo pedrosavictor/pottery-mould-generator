@@ -1212,15 +1212,21 @@ pre {
     display: none;
   }
 
+  /* UI-15/UI-17: Reduce editor height on mobile so full profile visible and controls closer */
   #editor-container {
-    min-height: 280px;
+    min-height: 220px;
+    height: 35vh;
+    max-height: 300px;
     flex: none;
     border-right: none;
     border-bottom: 1px solid var(--border-color);
   }
 
+  /* UI-16/UI-17: Reduce preview height on mobile to bring controls closer */
   #preview-container {
-    min-height: 280px;
+    min-height: 200px;
+    height: 30vh;
+    max-height: 300px;
     flex: none;
   }
 
@@ -1237,6 +1243,19 @@ pre {
 
   button, .btn-primary, .btn-secondary, .import-btn {
     min-height: 44px;
+  }
+
+  /* UI-18: Tighter positioning for mobile preview indicators */
+  .preview-status {
+    left: 8px;
+    bottom: 8px;
+    font-size: 0.7rem;
+  }
+
+  .orbit-hint {
+    right: 8px;
+    bottom: 8px;
+    font-size: 0.65rem;
   }
 }
 
