@@ -1413,20 +1413,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       try {
         await navigator.clipboard.writeText(url);
-        if (url.length <= 4000) {
-          showNotification('Share link copied to clipboard!', 'success', 3000);
-        }
       } catch (err) {
-        // Fallback: select text from a temporary input
-        const input = document.createElement('input');
-        input.value = url;
-        document.body.appendChild(input);
-        input.select();
+        // Fallback for older browsers or insecure contexts
+        const textarea = document.createElement('textarea');
+        textarea.value = url;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
         document.execCommand('copy');
-        document.body.removeChild(input);
-        if (url.length <= 4000) {
-          showNotification('Share link copied!', 'success', 3000);
-        }
+        document.body.removeChild(textarea);
+      }
+      if (url.length <= 4000) {
+        showNotification('Share link copied to clipboard!', 'success', 3000);
       }
     });
   }
