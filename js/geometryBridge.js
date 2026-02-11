@@ -226,6 +226,17 @@ export async function generateMouldWithCancellation(profilePoints, mouldParams) 
 }
 
 /**
+ * Calculate volumes of proof model and plaster cavity.
+ *
+ * @param {Array<ProfilePoint>} profilePoints
+ * @param {Object} mouldParams
+ * @returns {Promise<{ proofVolumeMm3: number, cavityVolumeMm3: number, innerMouldVolumeMm3: number }>}
+ */
+export function calculateVolumes(profilePoints, mouldParams) {
+  return sendCommand('calculateVolumes', { profilePoints, mouldParams });
+}
+
+/**
  * Export all mould parts as binary STL ArrayBuffers.
  *
  * Regenerates shapes in the worker and exports at the specified resolution.

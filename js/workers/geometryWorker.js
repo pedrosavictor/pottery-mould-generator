@@ -52,6 +52,7 @@ let setOC = null;
 let FaceFinder = null;
 let makeBox = null;
 let makeCylinder = null;
+let measureVolume = null;
 let opencascade = null;
 
 // ============================================================
@@ -87,6 +88,7 @@ async function initialize() {
     FaceFinder = replicadModule.FaceFinder;
     makeBox = replicadModule.makeBox;
     makeCylinder = replicadModule.makeCylinder;
+    measureVolume = replicadModule.measureVolume || null;
     opencascade = ocModule.default || ocModule;
 
     // Phase 2: Initialize WASM (downloads and compiles ~10.3 MB binary)
@@ -177,6 +179,14 @@ self.onmessage = async (e) => {
         break;
       }
 
+      case 'calculateVolumes': {
+        await initialize();
+        const { profilePoints: volProfilePoints, mouldParams: volMouldParams } = params;
+        const volumes = computeVolumes(volProfilePoints, volMouldParams);
+        self.postMessage({ id, data: volumes });
+        break;
+      }
+
       case 'exportParts': {
         await initialize();
         const { profilePoints, mouldParams, resolution } = params;
@@ -191,7 +201,7 @@ self.onmessage = async (e) => {
       default: {
         self.postMessage({
           id,
-          error: `Unknown command: "${type}". Supported commands: init, revolve, generateMould, exportParts, heapSize, memoryTest`,
+          error: `Unknown command: "${type}". Supported commands: init, revolve, generateMould, calculateVolumes, exportParts, heapSize, memoryTest`,
         });
       }
     }
@@ -712,6 +722,107 @@ function generateMouldParts(profilePoints, mouldParams) {
     }
 
     return results;
+  });
+}
+
+// ============================================================
+// Volume Measurement
+// ============================================================
+
+/**
+ * Calculate volume from mesh triangles using the signed tetrahedra method.
+ * Fallback if replicad's measureVolume is unavailable.
+ *
+ * @param {Object} shape - replicad shape with .mesh() method.
+ * @returns {number} Volume in mm^3.
+ */
+function meshVolumeFallback(shape) {
+  const { vertices, triangles } = shape.mesh({ tolerance: 0.1, angularTolerance: 0.3 });
+  let volume = 0;
+  for (let i = 0; i < triangles.length; i += 3) {
+    const i0 = triangles[i] * 3;
+    const i1 = triangles[i + 1] * 3;
+    const i2 = triangles[i + 2] * 3;
+    const ax = vertices[i0], ay = vertices[i0 + 1], az = vertices[i0 + 2];
+    const bx = vertices[i1], by = vertices[i1 + 1], bz = vertices[i1 + 2];
+    const cx = vertices[i2], cy = vertices[i2 + 1], cz = vertices[i2 + 2];
+    volume += ax * (by * cz - bz * cy) + ay * (bz * cx - bx * cz) + az * (bx * cy - by * cx);
+  }
+  return Math.abs(volume / 6);
+}
+
+/**
+ * Measure volume of a shape, using replicad's measureVolume if available,
+ * falling back to mesh-based signed tetrahedra method.
+ *
+ * @param {Object} shape - replicad shape.
+ * @returns {number} Volume in mm^3.
+ */
+function safeVolume(shape) {
+  if (measureVolume) {
+    try { return measureVolume(shape); } catch (e) { /* fall through */ }
+  }
+  return meshVolumeFallback(shape);
+}
+
+/**
+ * Compute volumes for all mould-related solids.
+ *
+ * @param {Array} profilePoints
+ * @param {Object} mouldParams
+ * @returns {{ proofVolumeMm3: number, cavityVolumeMm3: number, innerMouldVolumeMm3: number }}
+ */
+function computeVolumes(profilePoints, mouldParams) {
+  const {
+    shrinkageRate = 0.13,
+    wallThickness = 2.4,
+    slipWellType = 'none',
+    cavityGap = 25,
+    outerWallThickness = 2.4,
+    ringHeight = 8,
+  } = mouldParams || {};
+
+  return withCleanup((track) => {
+    // Proof model volume (fired pot)
+    const proofShape = track(buildAndRevolve(profilePoints));
+    const proofVolumeMm3 = safeVolume(proofShape);
+
+    // Inner mould: scaled profile + optional slip well, revolved
+    const scaledPoints = scaleProfileForShrinkage(profilePoints, shrinkageRate);
+    const wellHeights = { none: 0, regular: 25, tall: 50 };
+    const wellHeight = wellHeights[slipWellType] || 0;
+    const mouldProfile = wellHeight > 0
+      ? extendProfileForSlipWell(scaledPoints, wallThickness, wellHeight)
+      : scaledPoints;
+
+    const mouldSolid = track(buildAndRevolve(mouldProfile));
+    const innerMouldVolumeMm3 = safeVolume(mouldSolid);
+
+    // Cavity volume approximation using analytical geometry
+    const maxProfileRadius = Math.max(...scaledPoints.map(p => p.x));
+    const innerMouldOuterRadius = maxProfileRadius + wallThickness;
+    const outerMouldInnerRadius = innerMouldOuterRadius + cavityGap;
+
+    const bottomZ = mouldProfile[0].y;
+    const topZ = mouldProfile[mouldProfile.length - 1].y;
+    const height = topZ - bottomZ;
+
+    // Outer cylinder inner volume (the space inside the outer mould wall)
+    const outerCylinderVolume = Math.PI * outerMouldInnerRadius * outerMouldInnerRadius * height;
+
+    // Ring volume (washer shape)
+    const ringInnerR = innerMouldOuterRadius + 0.5;
+    const ringOuterR = innerMouldOuterRadius + cavityGap;
+    const ringVolume = Math.PI * (ringOuterR * ringOuterR - ringInnerR * ringInnerR) * ringHeight;
+
+    // Cavity = outer cylinder void - inner mould solid - ring
+    const cavityVolumeMm3 = Math.max(0, outerCylinderVolume - innerMouldVolumeMm3 - ringVolume);
+
+    return {
+      proofVolumeMm3: Math.round(proofVolumeMm3),
+      innerMouldVolumeMm3: Math.round(innerMouldVolumeMm3),
+      cavityVolumeMm3: Math.round(cavityVolumeMm3),
+    };
   });
 }
 

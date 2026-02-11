@@ -37,6 +37,7 @@ import { generatePresetProfile, PRESET_DEFAULTS, PRESET_SLIDER_RANGES } from './
 import { importSVGFile } from './svgImport.js';
 import { loadReferenceImage, clearReferenceImage, setReferenceOpacity } from './referenceImage.js';
 import { downloadMouldZip } from './exportManager.js';
+import { calculatePlaster, formatPlasterResults, formatVolume } from './plasterCalculator.js';
 
 // ============================================================
 // DOM References (populated on DOMContentLoaded)
@@ -212,6 +213,7 @@ async function onProfileChange(profilePoints) {
     }
 
     log('Mould generated: inner-mould + outer-mould + ring + proof');
+    updatePlasterCalculator();
   } catch (err) {
     console.warn('[app] Mould generation error:', err.message);
   }
@@ -546,6 +548,7 @@ async function regenerateMould() {
     }
 
     log(`Mould regenerated (shrinkage: ${(mouldParams.shrinkageRate * 100).toFixed(1)}%, wall: ${mouldParams.wallThickness}mm, well: ${mouldParams.slipWellType}, cavity: ${mouldParams.cavityGap}mm, split: ${mouldParams.splitCount})`);
+    updatePlasterCalculator();
   } catch (err) {
     console.warn('[app] Mould regeneration error:', err.message);
     if (statusEl) {
@@ -775,6 +778,9 @@ function initReferenceImage() {
 /** STL export resolution: 'standard' or 'high'. */
 let exportResolution = 'standard';
 
+/** Latest volume measurements from worker. */
+let lastVolumes = null;
+
 /** Whether 3D measurements are currently shown. */
 let showMeasurements = false;
 
@@ -853,6 +859,49 @@ function initViewControls() {
       showMeasurements = chkMeasurements.checked;
       preview3d.updateMeasurements(lastProfilePoints, showMeasurements);
     });
+  }
+}
+
+// ============================================================
+// Plaster Calculator
+// ============================================================
+
+/**
+ * Update the plaster calculator display with current volumes.
+ * Called after mould generation or volume recalculation.
+ */
+async function updatePlasterCalculator() {
+  if (!lastProfilePoints || lastProfilePoints.length < 2) return;
+  if (!geometryBridge.isReady()) return;
+
+  try {
+    const volumes = await geometryBridge.calculateVolumes(lastProfilePoints, mouldParams);
+    lastVolumes = volumes;
+
+    // Update pot volume display
+    const potVolEl = document.getElementById('val-pot-volume');
+    if (potVolEl) {
+      potVolEl.textContent = formatVolume(volumes.proofVolumeMm3);
+    }
+
+    // Update cavity volume display
+    const cavityVolEl = document.getElementById('val-cavity-volume');
+    if (cavityVolEl) {
+      cavityVolEl.textContent = formatVolume(volumes.cavityVolumeMm3);
+    }
+
+    // Calculate plaster amounts
+    const cavityCc = volumes.cavityVolumeMm3 / 1000;
+    const plaster = calculatePlaster(cavityCc);
+    const formatted = formatPlasterResults(plaster);
+
+    const plasterEl = document.getElementById('val-plaster-weight');
+    if (plasterEl) plasterEl.textContent = formatted.plaster;
+
+    const waterEl = document.getElementById('val-water-volume');
+    if (waterEl) waterEl.textContent = formatted.water;
+  } catch (err) {
+    console.warn('[app] Plaster calculator error:', err.message);
   }
 }
 
@@ -1062,6 +1111,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           log('Ring generated');
         }
       }
+      updatePlasterCalculator();
     } catch (upgradeErr) {
       console.warn('[app] WASM mould generation failed (LatheGeometry still showing):', upgradeErr.message);
     }
