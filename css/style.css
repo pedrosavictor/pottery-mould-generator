@@ -67,6 +67,13 @@ body {
   color: var(--text-color);
 }
 
+/* UI-01: App layout -- flex column so footer stays reachable */
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 /* -- Headings (brand typography) -- */
 
 h1, h2, h3, h4, h5, h6 {
@@ -160,7 +167,8 @@ header h1 {
 
 main {
   display: flex;
-  min-height: calc(100vh - 50px);
+  flex: 1;
+  /* UI-01: flex:1 fills remaining space; footer stays at bottom without being pushed off-screen */
 }
 
 /* ---- Profile Editor (2D Canvas) ---- */
@@ -168,7 +176,7 @@ main {
 #editor-container {
   flex: 2;
   position: relative;
-  min-height: 500px;
+  min-height: min(500px, 50vh);  /* UI-03: responsive min-height */
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--border-color);
 }
@@ -285,7 +293,7 @@ main {
 #preview-container {
   flex: 1.5;
   position: relative;
-  min-height: 500px;
+  min-height: min(500px, 50vh);  /* UI-03: responsive min-height */
   background-color: var(--bg-color);
 }
 
@@ -1106,13 +1114,28 @@ pre {
 
 /* ---- Responsive: Stack at narrow viewports ---- */
 
+/* UI-02: Tablet breakpoint -- 2-column layout with controls below */
 @media (max-width: 1024px) {
+  main {
+    flex-wrap: wrap;
+  }
+
   #editor-container {
-    flex: 1.5;
+    flex: 1 1 50%;
+    min-height: 380px;
+  }
+
+  #preview-container {
+    flex: 1 1 50%;
+    min-height: 380px;
   }
 
   aside#controls {
-    min-width: 240px;
+    flex: 1 1 100%;
+    max-width: none;
+    min-width: 0;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
   }
 }
 
