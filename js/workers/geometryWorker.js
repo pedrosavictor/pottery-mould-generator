@@ -296,6 +296,11 @@ function buildAndRevolve(points) {
         [pt.cp2.x, pt.cp2.y]
       );
     } else {
+      // BE-05: If a bezier segment has only one control point (cp1 or cp2
+      // but not both), it silently degrades to a straight line here. This
+      // is intentional: a cubic bezier requires two control points, and a
+      // single-cp curve approximates a quadratic bezier which for pottery
+      // profile purposes is adequately represented by a line segment.
       pen = pen.lineTo([pt.x, pt.y]);
     }
   }

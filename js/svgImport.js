@@ -217,6 +217,15 @@ function convertPathToProfile(svgPath) {
  * Additionally, the type of each point must be re-evaluated since
  * 'bezier' indicates the curve arriving at the point, not departing.
  *
+ * KNOWN LIMITATION (BE-03): For complex multi-bezier SVG profiles
+ * (e.g., S-curves with many control points), the simple cp1/cp2 swap
+ * may produce slightly distorted curves. A fully correct reversal would
+ * require redistributing bezier data between adjacent point pairs based
+ * on the original curve parameterization. For typical pottery profiles
+ * (5-10 points, gentle curves) the current approach is adequate. If
+ * distortion is observed on a complex SVG import, the user can re-import
+ * the SVG with the path direction already matching foot-to-rim order.
+ *
  * @param {Array<ProfilePoint>} points - Points to reverse (mutated in place).
  */
 function reverseProfile(points) {

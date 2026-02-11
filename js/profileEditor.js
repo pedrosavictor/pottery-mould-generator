@@ -84,6 +84,14 @@ export function initProfileEditor(canvasId, options = {}) {
   /** Whether editing tools (edit/draw) are enabled. Disabled in parametric mode. */
   let toolsEnabled = true;
 
+  /**
+   * Cached no-op Paper.js Tool used to deactivate edit/draw tools in
+   * parametric mode. Created on first use and reused to avoid leaking
+   * Tool instances on repeated setToolsEnabled(false) calls.
+   * @type {paper.Tool|null}
+   */
+  let noopTool = null;
+
   // --- 5. Render initial profile (if provided) ---
   let currentProfilePoints = initialProfile ? [...initialProfile.points] : [];
   let path = null;
@@ -500,9 +508,12 @@ export function initProfileEditor(canvasId, options = {}) {
         }
         if (btnDraw) btnDraw.disabled = false;
       } else {
-        // Disable: deactivate all Paper.js tools, grey out buttons
-        // Create a no-op tool to deactivate current tool
-        const noopTool = new paper.Tool();
+        // Disable: deactivate all Paper.js tools, grey out buttons.
+        // Reuse a single no-op Tool to avoid leaking instances on
+        // repeated setToolsEnabled(false) calls (BE-02).
+        if (!noopTool) {
+          noopTool = new paper.Tool();
+        }
         noopTool.activate();
         if (btnEdit) {
           btnEdit.disabled = true;
