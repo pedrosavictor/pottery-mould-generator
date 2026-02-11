@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 4 COMPLETE -- Live 3D Preview (3/3 plans done). Next: Phase 5 (Mould Shell Generation).
+**Current focus:** Phase 5 IN PROGRESS -- Inner Mould Generation (1/2 plans done). Next: 05-02 (slip well geometry + mould settings UI).
 
 ## Current Position
 
-Phase: 4 of 9 (Live 3D Preview)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-11 -- Completed 04-03-PLAN.md (view controls, exploded view, measurements)
+Phase: 5 of 9 (Inner Mould Generation)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-11 -- Completed 05-01-PLAN.md (mould generation pipeline)
 
-Progress: [███████████░░░░░░░░░░░░░░] 46% (11/24 plans)
+Progress: [████████████░░░░░░░░░░░░░] 50% (12/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: ~3.6 minutes
-- Total execution time: ~39.3 minutes
+- Total execution time: ~43.3 minutes
 
 **By Phase:**
 
@@ -31,10 +31,11 @@ Progress: [███████████░░░░░░░░░░░░
 | 2. Profile Editor Core | 3/3 | ~13m | ~4m |
 | 3. Profile Editor Extended | 2/2 | ~7m | ~3.5m |
 | 4. Live 3D Preview | 3/3 | ~7.3m | ~2.4m |
+| 5. Inner Mould Generation | 1/2 | ~4m | ~4m |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (~3m), 04-01 (~3.5m), 04-02 (~1.3m), 04-03 (~2.5m)
-- Trend: Accelerating -- simpler wiring plans execute faster
+- Last 5 plans: 04-01 (~3.5m), 04-02 (~1.3m), 04-03 (~2.5m), 05-01 (~4m)
+- Trend: Stable at ~3-4m per plan
 
 *Updated after each plan completion*
 
@@ -98,6 +99,11 @@ Recent decisions affecting current work:
 - [04-03]: EXPLODED_OFFSETS lookup table for clean extension in Phases 5-6
 - [04-03]: Mould/ring/proof checkboxes disabled until parts are generated
 - [04-03]: depthTest=false on measurement lines and sprites for always-visible annotations
+- [05-01]: Single generateMouldWithCancellation call replaces separate revolve + mould calls (avoids counter conflict)
+- [05-01]: Proof mesh doubles as 'pot' part (solid terra cotta) and 'proof' part (semi-transparent ghost)
+- [05-01]: Shell thickness NEGATIVE (-wallThickness) so wall grows outward from pot surface
+- [05-01]: buildAndRevolve() shared helper eliminates code duplication between revolveProfile and generateMouldParts
+- [05-01]: FaceFinder.inPlane("XY", topZ) selects rim face for shell opening
 
 ### Pending Todos
 
@@ -111,6 +117,7 @@ Recent decisions affecting current work:
 - Browser validation of LatheGeometry visual quality and preview status overlay positioning.
 - Browser validation of real-time drag preview (3D updates during drag, WASM upgrade on release).
 - Browser validation of view controls toggle interaction and measurement label readability.
+- Browser validation of mould generation: inner mould should be visibly larger than proof, distinct materials.
 
 ### Blockers/Concerns
 
@@ -122,5 +129,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed 04-03-PLAN.md (view controls, exploded view, measurements) -- Phase 4 complete
+Stopped at: Completed 05-01-PLAN.md (mould generation pipeline) -- Phase 5 in progress
 Resume file: None
