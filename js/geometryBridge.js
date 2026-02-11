@@ -55,6 +55,9 @@ let currentGenerationId = 0;
 /** Whether the worker has successfully completed initialization. */
 let ready = false;
 
+/** Promise for the in-progress initialization (guards against duplicate init). */
+let initPromise = null;
+
 /** Stored progress callback for broadcasting init progress. */
 let progressCallback = null;
 
@@ -153,8 +156,16 @@ function handleError(e) {
  * @throws {Error} If worker creation fails or WASM initialization fails.
  */
 export function init(onProgress) {
+  // Already initialized -- return immediately.
   if (ready && worker) {
     return Promise.resolve({ ready: true });
+  }
+
+  // Initialization in progress -- return the existing promise.
+  // This prevents a second call from creating an orphaned worker
+  // whose Promise never resolves.
+  if (initPromise) {
+    return initPromise;
   }
 
   progressCallback = onProgress || null;
@@ -163,10 +174,16 @@ export function init(onProgress) {
   worker.onmessage = handleMessage;
   worker.onerror = handleError;
 
-  return sendCommand('init').then((data) => {
+  initPromise = sendCommand('init').then((data) => {
     ready = true;
+    initPromise = null;
     return data;
+  }).catch((err) => {
+    initPromise = null;
+    throw err;
   });
+
+  return initPromise;
 }
 
 /**
@@ -330,6 +347,7 @@ export function destroy() {
   }
 
   ready = false;
+  initPromise = null;
   progressCallback = null;
   currentGenerationId = 0;
 }
