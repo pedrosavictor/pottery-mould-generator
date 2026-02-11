@@ -930,7 +930,26 @@ function computeVolumes(profilePoints, mouldParams) {
       : scaledPoints;
 
     const mouldSolid = track(buildAndRevolve(mouldProfile));
-    const innerMouldVolumeMm3 = safeVolume(mouldSolid);
+
+    // Use shelled (hollow) inner mould volume for accurate cavity calculation.
+    // The solid volume over-estimates the inner mould's physical volume since the
+    // actual printed mould is hollow. Try to shell; if it fails, approximate by
+    // subtracting the inner cavity (scaled proof shape) from the solid volume.
+    const topZ = mouldProfile[mouldProfile.length - 1].y;
+    let innerMouldVolumeMm3;
+    try {
+      const shelledForVolume = track(
+        mouldSolid.shell(-wallThickness, (f) => f.inPlane('XY', topZ))
+      );
+      innerMouldVolumeMm3 = safeVolume(shelledForVolume);
+    } catch (shellVolErr) {
+      // Shell failed -- approximate: solid volume minus the scaled inner cavity.
+      // The inner cavity is roughly the scaled proof shape (the pot interior).
+      const solidVol = safeVolume(mouldSolid);
+      const scaledProof = track(buildAndRevolve(scaledPoints));
+      const scaledProofVol = safeVolume(scaledProof);
+      innerMouldVolumeMm3 = Math.max(0, solidVol - scaledProofVol);
+    }
 
     // Cavity volume approximation using analytical geometry
     const maxProfileRadius = Math.max(...scaledPoints.map(p => p.x));
@@ -938,7 +957,6 @@ function computeVolumes(profilePoints, mouldParams) {
     const outerMouldInnerRadius = innerMouldOuterRadius + cavityGap;
 
     const bottomZ = mouldProfile[0].y;
-    const topZ = mouldProfile[mouldProfile.length - 1].y;
     const height = topZ - bottomZ;
 
     // Outer cylinder inner volume (the space inside the outer mould wall)
@@ -949,7 +967,7 @@ function computeVolumes(profilePoints, mouldParams) {
     const ringOuterR = innerMouldOuterRadius + cavityGap;
     const ringVolume = Math.PI * (ringOuterR * ringOuterR - ringInnerR * ringInnerR) * ringHeight;
 
-    // Cavity = outer cylinder void - inner mould solid - ring
+    // Cavity = outer cylinder void - inner mould (shelled) - ring
     const cavityVolumeMm3 = Math.max(0, outerCylinderVolume - innerMouldVolumeMm3 - ringVolume);
 
     return {
@@ -1025,23 +1043,31 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
       : scaledPoints;
 
     const mouldSolid = track(buildAndRevolve(mouldProfile));
-    const innerMouldVolumeMm3 = safeVolume(mouldSolid);
-    volumes.innerMouldVolumeMm3 = Math.round(innerMouldVolumeMm3);
     const topZ = mouldProfile[mouldProfile.length - 1].y;
 
+    // Use shelled (hollow) inner mould volume for accurate cavity calculation.
+    // Fall back to approximation (solid - inner cavity) if shell fails.
+    let innerMouldVolumeMm3;
     let shelledMould = null;
     try {
       shelledMould = track(
         mouldSolid.shell(-wallThickness, (f) => f.inPlane('XY', topZ))
       );
+      innerMouldVolumeMm3 = safeVolume(shelledMould);
     } catch (shellErr) {
       console.warn('[worker] Export: shell failed, trying fallback:', safeErrorMessage(shellErr));
       try {
         shelledMould = track(buildMouldBySubtraction(mouldProfile, mouldSolid, wallThickness, topZ, track));
+        innerMouldVolumeMm3 = safeVolume(shelledMould);
       } catch (fallbackErr) {
         console.warn('[worker] Export: fallback also failed:', safeErrorMessage(fallbackErr));
+        // Approximate: solid - inner cavity
+        const solidVol = safeVolume(mouldSolid);
+        const scaledProof = track(buildAndRevolve(scaledPoints));
+        innerMouldVolumeMm3 = Math.max(0, solidVol - safeVolume(scaledProof));
       }
     }
+    volumes.innerMouldVolumeMm3 = Math.round(innerMouldVolumeMm3);
     if (shelledMould) {
       stlBlobMap['inner-mould'] = shelledMould.blobSTL({ binary: true, ...meshOpts });
       stepBlobMap['inner-mould'] = safeStepBlob(shelledMould);
