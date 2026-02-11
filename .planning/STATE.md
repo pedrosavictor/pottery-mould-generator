@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 17 COMPLETE -- UI Layout & Polish (18 UI items resolved).
+**Current focus:** Phase 18 COMPLETE -- Backend & Worker Fixes (11 items resolved).
 
 ## Current Position
 
-Phase: 17 of 17 (UI Layout & Polish)
+Phase: 18 of 18 (Backend & Worker Fixes)
 Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-11 -- Completed Phase 17 (UI-01 through UI-18)
+Last activity: 2026-02-11 -- Completed Phase 18 (BE-01 through BE-11)
 
-Progress: [████████████████████████████████] 100% (32/32 plans)
+Progress: [█████████████████████████████████] 100% (33/33 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 32
-- Average duration: ~2.9 minutes
-- Total execution time: ~81 minutes
+- Total plans completed: 33
+- Average duration: ~2.8 minutes
+- Total execution time: ~84 minutes
 
 **By Phase:**
 
@@ -44,9 +44,10 @@ Progress: [███████████████████████
 | 15. URL Sharing & State Fixes | 1/1 | ~3m | ~3m |
 | 16. Accessibility (WCAG 2.1 AA) | 1/1 | ~3m | ~3m |
 | 17. UI Layout & Polish | 1/1 | ~5m | ~5m |
+| 18. Backend & Worker Fixes | 1/1 | ~3m | ~3m |
 
 **Recent Trend:**
-- Last 5 plans: 14-01, 15-01, 16-01, 17-01 (~3-5m)
+- Last 5 plans: 15-01, 16-01, 17-01, 18-01 (~3-5m)
 - Trend: Stable at ~3-5m per plan
 
 *Updated after each plan completion*
@@ -159,6 +160,12 @@ Recent decisions affecting current work:
 - [17-01]: Global button reset scoped to #dev-tools; lighter reset for all buttons
 - [17-01]: Pro gating uses .pro-gated CSS class instead of inline style.opacity
 - [17-01]: Dimension label X clamped to canvasWidth-50 to prevent clipping on narrow screens
+- [18-01]: DIM_MIN=5mm, DIM_MAX=500mm for dimension input validation
+- [18-01]: MAX_SVG_SIZE=1MB to prevent browser hangs during Paper.js parsing
+- [18-01]: Self-intersection O(n^2) threshold set to 30 curves
+- [18-01]: wallThickness min clamp 0.5mm -- thinner walls are unprintable
+- [18-01]: Dynamic cutter: Math.max(2, wallThickness + 1) for subtraction fallback
+- [18-01]: performance.memory as secondary heap tracking source (Chrome-only)
 
 ### Pending Todos
 
@@ -192,5 +199,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed Phase 17 (UI Layout & Polish). All 32 plans complete.
+Stopped at: Completed Phase 18 (Backend & Worker Fixes). All 33 plans complete.
 Resume file: None
