@@ -20,7 +20,10 @@
 <body>
   <div id="app">
     <header>
-      <h1>Pottery Mould Generator</h1>
+      <div class="header-left">
+        <h1>Pottery Mould Generator</h1>
+        <span class="header-brand">The Pottery Academy</span>
+      </div>
       <div class="header-right">
         <div id="auth-display">
           <span id="user-email-display"></span>
@@ -258,27 +261,30 @@
           </div>
         </div>
 
-        <h2>Phase 1 Test Harness</h2>
+        <!-- Dev tools (hidden by default -- unhide via console) -->
+        <div id="dev-tools" class="hidden">
+          <h2>Dev Tools</h2>
 
-        <div id="loading-indicator" class="visible">
-          <div class="spinner"></div>
-          <p id="loading-text">Loading geometry engine...</p>
-        </div>
+          <div id="loading-indicator" class="visible">
+            <div class="spinner"></div>
+            <p id="loading-text">Loading geometry engine...</p>
+          </div>
 
-        <div id="test-controls" class="hidden">
-          <button id="btn-revolve">Revolve Test Profile</button>
-          <button id="btn-memory-test">Run Memory Test (20x)</button>
-          <button id="btn-clear">Clear Mesh</button>
-        </div>
+          <div id="test-controls" class="hidden">
+            <button id="btn-revolve">Revolve Test Profile</button>
+            <button id="btn-memory-test">Run Memory Test (20x)</button>
+            <button id="btn-clear">Clear Mesh</button>
+          </div>
 
-        <div id="results">
-          <h3>Results</h3>
-          <pre id="output"></pre>
-        </div>
+          <div id="results">
+            <h3>Results</h3>
+            <pre id="output"></pre>
+          </div>
 
-        <div id="memory-results" class="hidden">
-          <h3>Memory Test Results</h3>
-          <pre id="memory-output"></pre>
+          <div id="memory-results" class="hidden">
+            <h3>Memory Test Results</h3>
+            <pre id="memory-output"></pre>
+          </div>
         </div>
       </aside>
     </main>

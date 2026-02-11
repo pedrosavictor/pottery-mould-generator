@@ -40,12 +40,25 @@ header {
   padding: 0.75rem 1.5rem;
   background-color: var(--dark);
   color: var(--cream);
+  border-bottom: 4px solid var(--terra-cotta);
+}
+
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
 }
 
 header h1 {
   margin: 0;
   font-size: 1.25rem;
-  font-weight: 600;
+  font-weight: 700;
+}
+
+.header-brand {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  letter-spacing: 0.03em;
 }
 
 .header-right {
@@ -259,8 +272,13 @@ aside#controls h2 {
 
 aside#controls h3 {
   margin: 1rem 0 0.5rem;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--dark);
+  padding-left: 0.6rem;
+  border-left: 3px solid var(--terra-cotta);
 }
 
 /* ---- Mode Controls ---- */
@@ -849,20 +867,34 @@ pre {
 
 /* ---- Responsive: Stack at narrow viewports ---- */
 
+@media (max-width: 1024px) {
+  #editor-container {
+    flex: 1.5;
+  }
+
+  aside#controls {
+    min-width: 240px;
+  }
+}
+
 @media (max-width: 768px) {
   main {
     flex-direction: column;
   }
 
+  .header-brand {
+    display: none;
+  }
+
   #editor-container {
-    min-height: 300px;
+    min-height: 280px;
     flex: none;
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
 
   #preview-container {
-    min-height: 300px;
+    min-height: 280px;
     flex: none;
   }
 
@@ -870,6 +902,15 @@ pre {
     max-width: none;
     border-left: none;
     border-top: 1px solid var(--border);
+  }
+
+  .modal-content {
+    width: 95%;
+    padding: 1.5rem;
+  }
+
+  button, .btn-primary, .btn-secondary, .import-btn {
+    min-height: 44px;
   }
 }
 
