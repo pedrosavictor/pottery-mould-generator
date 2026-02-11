@@ -57,6 +57,9 @@ export function importSVGFile(svgString) {
   // Convert Paper.js path segments to ProfilePoint[] format.
   const points = convertPathToProfile(svgPath);
 
+  // Validate the parsed profile for minimum viability.
+  validateParsedProfile(points);
+
   return points;
 }
 
@@ -240,6 +243,63 @@ function reverseProfile(points) {
     points[0].type = 'line';
     delete points[0].cp1;
     delete points[0].cp2;
+  }
+}
+
+/**
+ * Validate a parsed profile for minimum viability.
+ *
+ * Rejects degenerate profiles that would cause WASM errors downstream:
+ *   - Fewer than 3 points (2-point profiles create degenerate solids)
+ *   - Profile too short (< 5mm height after normalization)
+ *   - Profile too narrow (< 5mm width)
+ *   - Invalid numeric coordinates (NaN, Infinity)
+ *
+ * @param {Array<ProfilePoint>} points - Parsed profile points.
+ * @throws {Error} If the profile fails validation.
+ */
+function validateParsedProfile(points) {
+  if (!points || points.length < 3) {
+    throw new Error(
+      `SVG profile has only ${points ? points.length : 0} points. At least 3 points are required for a valid pottery profile.`
+    );
+  }
+
+  // Check all coordinates are valid numbers
+  for (let i = 0; i < points.length; i++) {
+    const pt = points[i];
+    if (!isFinite(pt.x) || !isFinite(pt.y)) {
+      throw new Error(
+        `SVG profile has invalid coordinates at point ${i + 1} (x=${pt.x}, y=${pt.y}). All points must have valid numeric coordinates.`
+      );
+    }
+    if (pt.cp1 && (!isFinite(pt.cp1.x) || !isFinite(pt.cp1.y))) {
+      throw new Error(
+        `SVG profile has invalid control point at point ${i + 1}. All coordinates must be valid numbers.`
+      );
+    }
+    if (pt.cp2 && (!isFinite(pt.cp2.x) || !isFinite(pt.cp2.y))) {
+      throw new Error(
+        `SVG profile has invalid control point at point ${i + 1}. All coordinates must be valid numbers.`
+      );
+    }
+  }
+
+  // Check minimum dimensions
+  const xs = points.map(p => p.x);
+  const ys = points.map(p => p.y);
+  const width = Math.max(...xs) - Math.min(...xs);
+  const height = Math.max(...ys) - Math.min(...ys);
+
+  if (height < 5) {
+    throw new Error(
+      `SVG profile is too short (${height.toFixed(1)}mm height). Minimum height is 5mm.`
+    );
+  }
+  if (width < 5) {
+    throw new Error(
+      `SVG profile is too narrow (${width.toFixed(1)}mm width). Minimum width is 5mm.`
+    );
   }
 }
 
