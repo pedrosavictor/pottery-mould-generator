@@ -499,7 +499,7 @@ function generateOuterMould(scaledPoints, mouldProfile, mouldParams, track) {
   // Build outer mould as a revolved rectangular cross-section.
   // This creates a cylindrical shell (uniform radius, open top, closed bottom).
   // The profile is: inner-bottom -> inner-top -> outer-top -> outer-bottom
-  // When closed back to axis by buildAndRevolve, the bottom becomes solid.
+  // When closed by revolveClosedProfile, the rectangle revolves into an annular tube.
   const outerProfile = [
     { x: outerMouldInnerRadius, y: bottomZ, type: 'line' },
     { x: outerMouldInnerRadius, y: topZ, type: 'line' },

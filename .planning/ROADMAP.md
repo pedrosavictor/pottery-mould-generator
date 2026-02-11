@@ -17,10 +17,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Profile Editor Extended** - Parametric presets, SVG import, reference image overlay
 - [x] **Phase 4: Live 3D Preview** - Three.js visualization connected to profile editing
 - [x] **Phase 5: Inner Mould Generation** - Shrinkage scaling, wall thickness, slip well, proof model
-- [ ] **Phase 6: Outer Mould, Ring, and Assembly** - Outer containment, splitting, ring, ridge/groove features
-- [ ] **Phase 7: File Export and Plaster Calculator** - STL/STEP download, ZIP bundling, plaster calculations
-- [ ] **Phase 8: Authentication and Freemium** - Supabase auth, subscription gating, design persistence
-- [ ] **Phase 9: UI/UX Polish and Deployment** - Branding, responsive design, error handling, deployment
+- [x] **Phase 6: Outer Mould, Ring, and Assembly** - Outer containment, splitting, ring, ridge/groove features
+- [x] **Phase 7: File Export and Plaster Calculator** - STL/STEP download, ZIP bundling, plaster calculations
+- [x] **Phase 8: Authentication and Freemium** - Supabase auth, subscription gating, design persistence
+- [x] **Phase 9: UI/UX Polish and Deployment** - Branding, responsive design, error handling, deployment
+- [x] **Phase 10: Console Bug Fixes** - Fix outer mould/ring generation failure, init timing, error logging
 
 ## Phase Details
 
@@ -133,12 +134,12 @@ Plans:
   3. Plaster calculator displays cavity volume, dry plaster weight (USG No.1 ratio 100:70), water volume, and pot volume estimation in the UI
   4. Plaster calculations are also included in the ZIP readme for reference at the workbench
   5. STEP export option is visible but gated behind Pro subscription (grayed out for free users)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: STL export with configurable resolution and ZIP bundling
-- [ ] 07-02: Plaster calculator (volume, weight, water calculations)
-- [ ] 07-03: STEP export and readme generation
+- [ ] 07-01-PLAN.md -- STL export with configurable resolution, ZIP bundling, export UI with download button
+- [ ] 07-02-PLAN.md -- Plaster calculator: volume measurement, plaster/water math, sidebar UI panel
+- [ ] 07-03-PLAN.md -- STEP export capability (gated), comprehensive readme with plaster calculations
 
 ### Phase 8: Authentication and Freemium
 **Goal**: Users can create accounts, access saved designs across devices, and the app enforces a freemium model where free users get watermarked STL while Pro users unlock STEP, custom shrinkage, and clean files.
@@ -173,6 +174,20 @@ Plans:
 - [ ] 09-02: Loading states, error handling, and URL sharing
 - [ ] 09-03: Vercel deployment and domain configuration
 
+### Phase 10: Console Bug Fixes
+**Goal**: Fix three critical bugs discovered during user testing: (1) outer mould and ring generation always fail because `buildAndRevolve()` creates degenerate geometry for annular profiles, (2) `initScene()` called after profile editor fires first change event, (3) WASM error objects lack `.message` property causing `undefined` in logs.
+**Depends on**: Phase 6 (outer mould/ring code), Phase 4 (preview init), Phase 1 (worker error handling)
+**Success Criteria** (what must be TRUE):
+  1. Outer mould halves/quarters generate successfully without console errors for all preset profiles (cup, bowl, vase, tumbler)
+  2. Ring pieces generate successfully without console errors for all preset profiles
+  3. No `[preview3d] Scene not initialized` warning appears in the console on page load
+  4. All WASM catch blocks log meaningful error messages instead of `undefined`
+  5. Console is clean on initial load and during normal profile editing (no red/yellow warnings from worker)
+**Plans**: 1 plan
+
+Plans:
+- [ ] 10-01-PLAN.md -- Fix annular revolution, init ordering, and error message extraction
+
 ## Progress
 
 **Execution Order:**
@@ -185,10 +200,11 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 3. Profile Editor Extended | 2/2 | Complete | 2026-02-10 |
 | 4. Live 3D Preview | 3/3 | Complete | 2026-02-10 |
 | 5. Inner Mould Generation | 2/2 | Complete | 2026-02-10 |
-| 6. Outer Mould, Ring, and Assembly | 0/3 | Not started | - |
-| 7. File Export and Plaster Calculator | 0/3 | Not started | - |
-| 8. Authentication and Freemium | 0/2 | Not started | - |
-| 9. UI/UX Polish and Deployment | 0/3 | Not started | - |
+| 6. Outer Mould, Ring, and Assembly | 3/3 | Complete | 2026-02-10 |
+| 7. File Export and Plaster Calculator | 3/3 | Complete | 2026-02-10 |
+| 8. Authentication and Freemium | 2/2 | Complete | 2026-02-10 |
+| 9. UI/UX Polish and Deployment | 3/3 | Complete | 2026-02-10 |
+| 10. Console Bug Fixes | 1/1 | Complete | 2026-02-11 |
 
 ---
 *Roadmap created: 2026-02-10*
