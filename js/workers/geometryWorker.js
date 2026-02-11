@@ -252,7 +252,9 @@ self.onmessage = async (e) => {
  * @returns {Array} New points array with all coordinates scaled.
  */
 function scaleProfileForShrinkage(points, shrinkageRate) {
-  const scaleFactor = 1 / (1 - shrinkageRate);
+  // Clamp to [0, 0.99] to prevent division by zero (1 / (1 - 1.0) = Infinity)
+  const clampedRate = Math.max(0, Math.min(0.99, shrinkageRate));
+  const scaleFactor = 1 / (1 - clampedRate);
   return points.map((pt) => {
     const scaled = {
       x: pt.x * scaleFactor,

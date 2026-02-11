@@ -638,7 +638,7 @@ function initMouldSettings() {
   // Wire shrinkage slider
   if (sliderShrinkage) {
     sliderShrinkage.addEventListener('input', () => {
-      const pct = parseFloat(sliderShrinkage.value);
+      const pct = Math.min(99, parseFloat(sliderShrinkage.value));
       if (valShrinkage) valShrinkage.textContent = pct;
       mouldParams.shrinkageRate = pct / 100;
       regenerateMould();
