@@ -39,6 +39,7 @@ import { loadReferenceImage, clearReferenceImage, setReferenceOpacity } from './
 import { downloadMouldZip } from './exportManager.js';
 import { calculatePlaster, formatPlasterResults, formatVolume } from './plasterCalculator.js';
 import { initEmailGate, checkEmailGate, showEmailModal, showVerifyModal, trackDownload } from './emailGate.js';
+import { isPro, getUserTier, getStoredEmail, isLoggedIn } from './authState.js';
 
 // ============================================================
 // DOM References (populated on DOMContentLoaded)
@@ -215,6 +216,7 @@ async function onProfileChange(profilePoints) {
 
     log('Mould generated: inner-mould + outer-mould + ring + proof');
     updatePlasterCalculator();
+    saveProfile(profilePoints);
   } catch (err) {
     console.warn('[app] Mould generation error:', err.message);
   }
@@ -550,10 +552,26 @@ async function regenerateMould() {
 
     log(`Mould regenerated (shrinkage: ${(mouldParams.shrinkageRate * 100).toFixed(1)}%, wall: ${mouldParams.wallThickness}mm, well: ${mouldParams.slipWellType}, cavity: ${mouldParams.cavityGap}mm, split: ${mouldParams.splitCount})`);
     updatePlasterCalculator();
+    saveSettings();
   } catch (err) {
     console.warn('[app] Mould regeneration error:', err.message);
     if (statusEl) {
       statusEl.textContent = 'Mould generation failed';
+    }
+  }
+}
+
+/**
+ * Apply Pro gating to a slider: disable for free users with visual feedback.
+ * @param {HTMLInputElement} slider
+ * @param {HTMLElement} label - The label element to annotate
+ */
+function gateSliderForPro(slider, label) {
+  if (!isPro() && slider) {
+    slider.disabled = true;
+    slider.style.opacity = '0.4';
+    if (label && !label.textContent.includes('(Pro)')) {
+      label.textContent += ' (Pro)';
     }
   }
 }
@@ -568,6 +586,12 @@ function initMouldSettings() {
   const sliderWallThickness = document.getElementById('slider-wall-thickness');
   const valWallThickness = document.getElementById('val-wall-thickness');
   const selectSlipWell = document.getElementById('select-slip-well');
+
+  // Gate shrinkage and wall thickness behind Pro
+  const shrinkageLabel = sliderShrinkage?.closest('.slider-field')?.querySelector('label');
+  const wallLabel = sliderWallThickness?.closest('.slider-field')?.querySelector('label');
+  gateSliderForPro(sliderShrinkage, shrinkageLabel);
+  gateSliderForPro(sliderWallThickness, wallLabel);
 
   // Sync initial UI values to mouldParams
   if (sliderShrinkage) {
@@ -921,6 +945,7 @@ async function proceedWithDownload(btnDownload, exportStatus) {
 
   try {
     await downloadMouldZip(lastProfilePoints, mouldParams, exportResolution, {
+      userTier: getUserTier(),
       onProgress: (msg) => {
         if (exportStatus) exportStatus.textContent = msg;
       },
@@ -1000,16 +1025,134 @@ function initExportControls() {
     });
   }
 
-  // STEP button (Pro gating placeholder)
+  // STEP button (Pro gating)
   const btnStep = document.getElementById('btn-download-step');
   if (btnStep) {
-    btnStep.addEventListener('click', () => {
-      if (exportStatus) {
-        exportStatus.textContent = 'STEP export available with Pro subscription';
-        setTimeout(() => { exportStatus.textContent = ''; }, 3000);
+    btnStep.addEventListener('click', async () => {
+      if (isPro()) {
+        // Pro user: download with STEP files included
+        if (!lastProfilePoints || lastProfilePoints.length < 2) {
+          if (exportStatus) exportStatus.textContent = 'No profile to export';
+          return;
+        }
+        btnStep.disabled = true;
+        btnStep.textContent = 'Exporting STEP...';
+        try {
+          await downloadMouldZip(lastProfilePoints, mouldParams, exportResolution, {
+            includeStep: true,
+            userTier: 'pro',
+            onProgress: (msg) => {
+              if (exportStatus) exportStatus.textContent = msg;
+            },
+          });
+          if (exportStatus) exportStatus.textContent = 'STEP download started!';
+          setTimeout(() => { if (exportStatus) exportStatus.textContent = ''; }, 3000);
+        } catch (err) {
+          console.error('[app] STEP export error:', err);
+          if (exportStatus) exportStatus.textContent = 'STEP export failed: ' + err.message;
+        } finally {
+          btnStep.disabled = false;
+          btnStep.textContent = 'Download STEP (Pro)';
+        }
+      } else {
+        if (exportStatus) {
+          exportStatus.textContent = 'STEP export available with Pro subscription';
+          setTimeout(() => { exportStatus.textContent = ''; }, 3000);
+        }
       }
     });
   }
+}
+
+// ============================================================
+// Auth Display
+// ============================================================
+
+/**
+ * Update the header auth display with current user state.
+ */
+function updateAuthDisplay() {
+  const emailEl = document.getElementById('user-email-display');
+  const tierEl = document.getElementById('user-tier-badge');
+
+  if (isLoggedIn()) {
+    const email = getStoredEmail();
+    const tier = getUserTier();
+    if (emailEl) emailEl.textContent = email;
+    if (tierEl) {
+      tierEl.textContent = tier === 'pro' ? 'Pro' : 'Free';
+      tierEl.className = tier === 'pro' ? 'tier-pro' : 'tier-free';
+    }
+  } else {
+    if (emailEl) emailEl.textContent = '';
+    if (tierEl) {
+      tierEl.textContent = '';
+      tierEl.className = '';
+    }
+  }
+}
+
+// ============================================================
+// Design Persistence (localStorage)
+// ============================================================
+
+const PERSIST_KEYS = {
+  PROFILE: 'mouldGen_lastProfile',
+  SETTINGS: 'mouldGen_lastSettings',
+};
+
+/**
+ * Save current profile points to localStorage.
+ * @param {Array<ProfilePoint>} points
+ */
+function saveProfile(points) {
+  try {
+    localStorage.setItem(PERSIST_KEYS.PROFILE, JSON.stringify(points));
+  } catch (err) {
+    // Silently fail -- storage quota or disabled
+  }
+}
+
+/**
+ * Save current mould settings to localStorage.
+ */
+function saveSettings() {
+  try {
+    localStorage.setItem(PERSIST_KEYS.SETTINGS, JSON.stringify(mouldParams));
+  } catch (err) {
+    // Silently fail
+  }
+}
+
+/**
+ * Load saved profile from localStorage.
+ * @returns {Array<ProfilePoint>|null}
+ */
+function loadSavedProfile() {
+  try {
+    const data = localStorage.getItem(PERSIST_KEYS.PROFILE);
+    if (!data) return null;
+    const points = JSON.parse(data);
+    if (Array.isArray(points) && points.length >= 2) return points;
+  } catch (err) {
+    // Corrupt data
+  }
+  return null;
+}
+
+/**
+ * Load saved mould settings from localStorage.
+ * @returns {Object|null}
+ */
+function loadSavedSettings() {
+  try {
+    const data = localStorage.getItem(PERSIST_KEYS.SETTINGS);
+    if (!data) return null;
+    return JSON.parse(data);
+  } catch (err) {
+    // Corrupt data
+  }
+  return null;
 }
 
 // ============================================================
@@ -1060,6 +1203,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize email gate (modal, event listeners)
   initEmailGate();
+
+  // Update auth display in header
+  updateAuthDisplay();
+
+  // Restore saved mould settings if user is logged in
+  if (isLoggedIn()) {
+    const savedSettings = loadSavedSettings();
+    if (savedSettings) {
+      Object.assign(mouldParams, savedSettings);
+      // Sync UI sliders to restored values
+      const sliderShrinkage = document.getElementById('slider-shrinkage');
+      const valShrinkage = document.getElementById('val-shrinkage');
+      if (sliderShrinkage) {
+        sliderShrinkage.value = Math.round(mouldParams.shrinkageRate * 100 * 10) / 10;
+        if (valShrinkage) valShrinkage.textContent = sliderShrinkage.value;
+      }
+      const sliderWallThickness = document.getElementById('slider-wall-thickness');
+      const valWallThickness = document.getElementById('val-wall-thickness');
+      if (sliderWallThickness) {
+        sliderWallThickness.value = mouldParams.wallThickness;
+        if (valWallThickness) valWallThickness.textContent = mouldParams.wallThickness;
+      }
+      log('Restored saved mould settings');
+    }
+  }
 
   // Start in parametric mode: disable direct editing tools
   if (profileEditor) {

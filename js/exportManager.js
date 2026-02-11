@@ -42,9 +42,10 @@ function triggerDownload(blob, filename) {
  * @param {Object} params.volumes - Volume measurements from worker.
  * @param {'standard'|'high'} params.resolution - STL resolution used.
  * @param {boolean} [params.includeStep] - Whether STEP files are included.
+ * @param {'free'|'pro'} [params.userTier] - User tier.
  * @returns {string} Readme text content.
  */
-function generateReadme({ partNames, mouldParams, volumes, resolution, includeStep = false }) {
+function generateReadme({ partNames, mouldParams, volumes, resolution, includeStep = false, userTier = 'free' }) {
   const date = new Date().toISOString().split('T')[0];
   const cavityCc = (volumes.cavityVolumeMm3 || 0) / 1000;
   const potCc = (volumes.proofVolumeMm3 || 0) / 1000;
@@ -55,6 +56,13 @@ function generateReadme({ partNames, mouldParams, volumes, resolution, includeSt
     : mouldParams.slipWellType === 'tall' ? 'Tall (50mm)' : 'Regular (25mm)';
 
   let text = '';
+  if (userTier !== 'pro') {
+    text += '========================================\n';
+    text += '  FREE TIER -- moulds.thepotteryacademy.com\n';
+    text += '  Upgrade to Pro for STEP files, custom\n';
+    text += '  shrinkage, and clean exports.\n';
+    text += '========================================\n\n';
+  }
   text += 'POTTERY MOULD PARTS\n';
   text += '====================\n';
   text += '\n';
@@ -140,6 +148,7 @@ function generateReadme({ partNames, mouldParams, volumes, resolution, includeSt
  * @param {Object} [options] - Additional options.
  * @param {string} [options.projectName] - Name for the ZIP folder (default: 'pottery-mould').
  * @param {boolean} [options.includeStep] - Whether to include STEP files (Pro feature).
+ * @param {'free'|'pro'} [options.userTier] - User tier for watermark/naming.
  * @param {function(string): void} [options.onProgress] - Progress callback.
  * @returns {Promise<void>}
  */
@@ -148,7 +157,7 @@ export async function downloadMouldZip(profilePoints, mouldParams, resolution, o
     throw new Error('JSZip not loaded. Check that the CDN script tag is in index.html.');
   }
 
-  const { projectName = 'pottery-mould', onProgress, includeStep = false } = options;
+  const { projectName = 'pottery-mould', onProgress, includeStep = false, userTier = 'free' } = options;
 
   onProgress?.('Generating files...');
   const exportData = await geometryBridge.exportParts(profilePoints, mouldParams, resolution);
@@ -177,12 +186,14 @@ export async function downloadMouldZip(profilePoints, mouldParams, resolution, o
     volumes: exportData.volumes,
     resolution,
     includeStep,
+    userTier,
   });
   folder.file('README.txt', readme);
 
   onProgress?.('Creating ZIP...');
   const blob = await zip.generateAsync({ type: 'blob' });
 
-  triggerDownload(blob, `${projectName}.zip`);
+  const suffix = userTier === 'pro' ? '' : '-FREE';
+  triggerDownload(blob, `${projectName}${suffix}.zip`);
   onProgress?.('Done');
 }

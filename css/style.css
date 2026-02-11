@@ -48,6 +48,42 @@ header h1 {
   font-weight: 600;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+#auth-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+#user-email-display {
+  opacity: 0.7;
+}
+
+#user-tier-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+#user-tier-badge.tier-free {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--cream);
+}
+
+#user-tier-badge.tier-pro {
+  background: var(--terra-cotta);
+  color: #fff;
+}
+
 #status {
   font-size: 0.875rem;
   opacity: 0.85;
