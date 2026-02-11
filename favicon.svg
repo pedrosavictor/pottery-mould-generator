@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Outer circle (mould) -->
+  <circle cx="16" cy="16" r="14" fill="#2d2d2d" stroke="#c2956b" stroke-width="2"/>
+  <!-- Inner pot shape (cutaway section) -->
+  <path d="M11 22 L11 12 Q11 8 16 8 Q21 8 21 12 L21 22 Z" fill="#c2956b" opacity="0.9"/>
+  <!-- Cavity gap indication -->
+  <path d="M13 21 L13 13 Q13 10 16 10 Q19 10 19 13 L19 21 Z" fill="#f5f0eb"/>
+</svg>
