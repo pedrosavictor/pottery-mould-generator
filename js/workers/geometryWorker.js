@@ -192,8 +192,11 @@ self.onmessage = async (e) => {
         const { profilePoints, mouldParams, resolution } = params;
         const exportData = await exportMouldPartsForDownload(profilePoints, mouldParams, resolution);
 
-        // Transfer all STL ArrayBuffers for zero-copy
-        const transferList = Object.values(exportData.stlBuffers);
+        // Transfer all STL + STEP ArrayBuffers for zero-copy
+        const transferList = [
+          ...Object.values(exportData.stlBuffers),
+          ...Object.values(exportData.stepBuffers),
+        ];
         self.postMessage({ id, data: exportData }, transferList);
         break;
       }
@@ -831,17 +834,18 @@ function computeVolumes(profilePoints, mouldParams) {
 // ============================================================
 
 /**
- * Re-generate mould shapes and export as binary STL ArrayBuffers.
+ * Re-generate mould shapes and export as binary STL and STEP blobs,
+ * plus measure volumes for the readme.
  *
  * Shapes must be re-generated because the preview pipeline deletes them
- * after mesh extraction (withCleanup pattern). Export runs blobSTL()
- * INSIDE withCleanup while shapes still exist, then converts Blobs to
- * ArrayBuffers OUTSIDE (since blob.arrayBuffer() is async).
+ * after mesh extraction (withCleanup pattern). Export runs blobSTL() and
+ * blobSTEP() INSIDE withCleanup while shapes still exist, then converts
+ * Blobs to ArrayBuffers OUTSIDE (since blob.arrayBuffer() is async).
  *
  * @param {Array} profilePoints
  * @param {Object} mouldParams
  * @param {'standard'|'high'} resolution
- * @returns {Promise<{ stlBuffers: Object<string, ArrayBuffer>, partNames: string[] }>}
+ * @returns {Promise<{ stlBuffers: Object, stepBuffers: Object, volumes: Object, partNames: string[] }>}
  */
 async function exportMouldPartsForDownload(profilePoints, mouldParams, resolution) {
   const meshOpts = resolution === 'high'
@@ -859,14 +863,26 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
     ringHeight = 8,
   } = mouldParams || {};
 
+  // Helper: generate STEP blob with error handling (never blocks STL export)
+  function safeStepBlob(shape) {
+    try { return shape.blobSTEP(); } catch (e) {
+      console.warn('[worker] STEP blob failed:', e.message);
+      return null;
+    }
+  }
+
   // withCleanup is synchronous -- collects Blobs while shapes exist
-  const blobs = withCleanup((track) => {
-    const blobMap = {};
+  const result = withCleanup((track) => {
+    const stlBlobMap = {};
+    const stepBlobMap = {};
     const partNames = [];
+    const volumes = {};
 
     // Proof model: original profile at fired dimensions
     const proofShape = track(buildAndRevolve(profilePoints));
-    blobMap['proof-model'] = proofShape.blobSTL({ binary: true, ...meshOpts });
+    stlBlobMap['proof-model'] = proofShape.blobSTL({ binary: true, ...meshOpts });
+    stepBlobMap['proof-model'] = safeStepBlob(proofShape);
+    volumes.proofVolumeMm3 = Math.round(safeVolume(proofShape));
     partNames.push('proof-model');
 
     // Inner mould: shrinkage-scaled, optionally with slip well, shelled
@@ -878,13 +894,16 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
       : scaledPoints;
 
     const mouldSolid = track(buildAndRevolve(mouldProfile));
+    const innerMouldVolumeMm3 = safeVolume(mouldSolid);
+    volumes.innerMouldVolumeMm3 = Math.round(innerMouldVolumeMm3);
     const topZ = mouldProfile[mouldProfile.length - 1].y;
 
     try {
       const shelledMould = track(
         mouldSolid.shell(-wallThickness, (f) => f.inPlane('XY', topZ))
       );
-      blobMap['inner-mould'] = shelledMould.blobSTL({ binary: true, ...meshOpts });
+      stlBlobMap['inner-mould'] = shelledMould.blobSTL({ binary: true, ...meshOpts });
+      stepBlobMap['inner-mould'] = safeStepBlob(shelledMould);
       partNames.push('inner-mould');
     } catch (shellErr) {
       console.warn('[worker] Export: shell failed, skipping inner-mould:', shellErr.message);
@@ -903,7 +922,8 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
       );
       for (const piece of ridgedOuterPieces) {
         const name = `outer-${piece.key}`;
-        blobMap[name] = piece.solid.blobSTL({ binary: true, ...meshOpts });
+        stlBlobMap[name] = piece.solid.blobSTL({ binary: true, ...meshOpts });
+        stepBlobMap[name] = safeStepBlob(piece.solid);
         partNames.push(name);
       }
     } catch (outerErr) {
@@ -923,24 +943,48 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
       );
       for (const piece of ridgedRingPieces) {
         const name = `ring-${piece.key}`;
-        blobMap[name] = piece.solid.blobSTL({ binary: true, ...meshOpts });
+        stlBlobMap[name] = piece.solid.blobSTL({ binary: true, ...meshOpts });
+        stepBlobMap[name] = safeStepBlob(piece.solid);
         partNames.push(name);
       }
     } catch (ringErr) {
       console.warn('[worker] Export: ring failed:', ringErr.message);
     }
 
-    return { blobMap, partNames };
+    // Cavity volume approximation (analytical)
+    const maxProfR = Math.max(...scaledPoints.map(p => p.x));
+    const innerMouldOuterR = maxProfR + wallThickness;
+    const outerMouldInnerR = innerMouldOuterR + cavityGap;
+    const bottomZ = mouldProfile[0].y;
+    const height = topZ - bottomZ;
+    const outerCylVol = Math.PI * outerMouldInnerR * outerMouldInnerR * height;
+    const ringInnerR2 = innerMouldOuterR + 0.5;
+    const ringOuterR2 = innerMouldOuterR + cavityGap;
+    const ringVol = Math.PI * (ringOuterR2 * ringOuterR2 - ringInnerR2 * ringInnerR2) * ringHeight;
+    volumes.cavityVolumeMm3 = Math.round(Math.max(0, outerCylVol - innerMouldVolumeMm3 - ringVol));
+
+    return { stlBlobMap, stepBlobMap, partNames, volumes };
   });
 
   // Convert Blobs to ArrayBuffers OUTSIDE withCleanup (async)
   const stlBuffers = {};
-  const partNames = blobs.partNames;
-  await Promise.all(partNames.map(async (name) => {
-    stlBuffers[name] = await blobs.blobMap[name].arrayBuffer();
-  }));
+  const stepBuffers = {};
+  const partNames = result.partNames;
 
-  return { stlBuffers, partNames };
+  const conversions = [];
+  for (const name of partNames) {
+    conversions.push(
+      result.stlBlobMap[name].arrayBuffer().then(buf => { stlBuffers[name] = buf; })
+    );
+    if (result.stepBlobMap[name]) {
+      conversions.push(
+        result.stepBlobMap[name].arrayBuffer().then(buf => { stepBuffers[name] = buf; })
+      );
+    }
+  }
+  await Promise.all(conversions);
+
+  return { stlBuffers, stepBuffers, volumes: result.volumes, partNames };
 }
 
 // ============================================================
