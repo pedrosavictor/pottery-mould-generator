@@ -14,9 +14,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: WASM Foundation** - OpenCASCADE.js in Web Worker with memory management and basic revolution
 - [x] **Phase 2: Profile Editor Core** - Bezier curve editor with constraints and undo/redo
-- [ ] **Phase 3: Profile Editor Extended** - Parametric presets, SVG import, reference image overlay
-- [ ] **Phase 4: Live 3D Preview** - Three.js visualization connected to profile editing
-- [ ] **Phase 5: Inner Mould Generation** - Shrinkage scaling, wall thickness, slip well, proof model
+- [x] **Phase 3: Profile Editor Extended** - Parametric presets, SVG import, reference image overlay
+- [x] **Phase 4: Live 3D Preview** - Three.js visualization connected to profile editing
+- [x] **Phase 5: Inner Mould Generation** - Shrinkage scaling, wall thickness, slip well, proof model
 - [ ] **Phase 6: Outer Mould, Ring, and Assembly** - Outer containment, splitting, ring, ridge/groove features
 - [ ] **Phase 7: File Export and Plaster Calculator** - STL/STEP download, ZIP bundling, plaster calculations
 - [ ] **Phase 8: Authentication and Freemium** - Supabase auth, subscription gating, design persistence
@@ -83,12 +83,12 @@ Plans:
   3. Editing the profile updates the 3D preview within 200ms (debounced regeneration with latest-wins cancellation)
   4. User can toggle visibility of individual mould components (inner, outer halves, ring, proof model) via checkboxes
   5. User can switch between assembled view (parts together) and exploded view (parts separated) and see measurement annotations (height, rim diameter, belly diameter, foot diameter)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Three.js scene with orbit controls and lightweight LatheGeometry fallback
-- [ ] 04-02: Debounced regeneration pipeline connecting editor to geometry worker
-- [ ] 04-03: Part visibility toggles, exploded view, and measurement annotations
+- [ ] 04-01-PLAN.md -- LatheGeometry instant fallback, part manager, scene infrastructure (Wave 1)
+- [ ] 04-02-PLAN.md -- Real-time drag preview with dual-tier LatheGeometry + WASM pipeline (Wave 2)
+- [ ] 04-03-PLAN.md -- Part visibility toggles, exploded view, and 3D measurement annotations (Wave 2)
 
 ### Phase 5: Inner Mould Generation
 **Goal**: The app generates a geometrically correct inner mould from the user's profile -- scaled for clay shrinkage, offset for wall thickness, with a slip well attached and a proof model showing the final fired pot.
@@ -100,11 +100,11 @@ Plans:
   3. Slip well appears at the top of the inner mould in the selected size (None / Regular / Tall) and is seamlessly joined to the mould body
   4. Proof model accurately represents the final fired pot at correct shrunk dimensions
   5. All generated solids are watertight with correct outward-facing normals (ready for 3D printing slicers)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: Shrinkage scaling and wall thickness offset operations
-- [ ] 05-02: Slip well generation, proof model, and manifold validation
+- [ ] 05-01-PLAN.md -- Core mould generation pipeline: worker command, bridge, proof + inner-mould with shrinkage and shell (Wave 1)
+- [ ] 05-02-PLAN.md -- Slip well extension, mould settings UI panel, error handling (Wave 2)
 
 ### Phase 6: Outer Mould, Ring, and Assembly
 **Goal**: The app generates the complete mould assembly -- outer containment wall split into halves or quarters, bottom ring in matching split configuration, and ridge/groove features on all mating surfaces for precise alignment.
@@ -116,12 +116,12 @@ Plans:
   3. All mating surfaces have ridge/groove features that interlock, with configurable assembly clearance (default 0.3mm for FDM printers)
   4. Outer mould includes a pour hole at the bottom for plaster introduction
   5. User can adjust split count and clearance, and see the 3D preview update with the new configuration
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: Outer mould generation with plaster cavity offset and splitting
-- [ ] 06-02: Ring generation and ridge/groove assembly features
-- [ ] 06-03: Pour hole, clearance configuration, and assembly validation
+- [ ] 06-01-PLAN.md -- Outer mould cylindrical shell with cavity offset, halves/quarters splitting, UI controls
+- [ ] 06-02-PLAN.md -- Bottom ring generation, ridge/groove assembly features on all split faces
+- [ ] 06-03-PLAN.md -- Pour hole, clearance/wall-thickness sliders, full assembly visual verification
 
 ### Phase 7: File Export and Plaster Calculator
 **Goal**: Users can download ready-to-print mould files and know exactly how much plaster and water to mix -- the complete handoff from digital design to physical mould making.
@@ -182,9 +182,9 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 |-------|----------------|--------|-----------|
 | 1. WASM Foundation | 3/3 | Complete | 2026-02-10 |
 | 2. Profile Editor Core | 3/3 | Complete | 2026-02-10 |
-| 3. Profile Editor Extended | 0/2 | Not started | - |
-| 4. Live 3D Preview | 0/3 | Not started | - |
-| 5. Inner Mould Generation | 0/2 | Not started | - |
+| 3. Profile Editor Extended | 2/2 | Complete | 2026-02-10 |
+| 4. Live 3D Preview | 3/3 | Complete | 2026-02-10 |
+| 5. Inner Mould Generation | 2/2 | Complete | 2026-02-10 |
 | 6. Outer Mould, Ring, and Assembly | 0/3 | Not started | - |
 | 7. File Export and Plaster Calculator | 0/3 | Not started | - |
 | 8. Authentication and Freemium | 0/2 | Not started | - |
