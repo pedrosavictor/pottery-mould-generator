@@ -50,6 +50,8 @@ const WASM_CDN = 'https://cdn.jsdelivr.net/npm/replicad-opencascadejs@0.20.2/src
 let draw = null;
 let setOC = null;
 let FaceFinder = null;
+let makeBox = null;
+let makeCylinder = null;
 let opencascade = null;
 
 // ============================================================
@@ -83,6 +85,8 @@ async function initialize() {
     draw = replicadModule.draw;
     setOC = replicadModule.setOC;
     FaceFinder = replicadModule.FaceFinder;
+    makeBox = replicadModule.makeBox;
+    makeCylinder = replicadModule.makeCylinder;
     opencascade = ocModule.default || ocModule;
 
     // Phase 2: Initialize WASM (downloads and compiles ~10.3 MB binary)
@@ -331,6 +335,116 @@ function extendProfileForSlipWell(points, wallThickness, wellHeight) {
 }
 
 /**
+ * Split a revolved solid into halves or quarters using box-cutting.
+ *
+ * The solid is centered on the Z axis (revolved around Z).
+ * Halves: split at Y=0 plane -> front (Y>0) and back (Y<0).
+ * Quarters: split at both Y=0 and X=0 -> four quadrants.
+ *
+ * @param {Object} shape - The revolved replicad Solid.
+ * @param {number} splitCount - 2 for halves, 4 for quarters.
+ * @param {Function} track - The withCleanup track function.
+ * @returns {Array<{ key: string, solid: Object }>} Named pieces.
+ */
+function splitSolid(shape, splitCount, track) {
+  const B = 500; // Oversized cutting box dimension (much larger than any mould)
+
+  if (splitCount === 4) {
+    // Step 1: split into front/back halves at Y=0
+    const cutFrontTool = track(makeBox([-B, -B, -B], [B, 0, B]));
+    const frontHalf = track(shape.cut(cutFrontTool));
+    const cutBackTool = track(makeBox([-B, 0, -B], [B, B, B]));
+    const backHalf = track(shape.cut(cutBackTool));
+
+    // Step 2: split each half into left/right at X=0
+    const cutLeftTool = track(makeBox([-B, -B, -B], [0, B, B]));
+    const cutRightTool = track(makeBox([0, -B, -B], [B, B, B]));
+
+    const q1 = track(frontHalf.cut(cutLeftTool));  // X>0, Y>0
+    const q2 = track(frontHalf.cut(cutRightTool)); // X<0, Y>0
+    const q3 = track(backHalf.cut(cutLeftTool));   // X>0, Y<0
+    const q4 = track(backHalf.cut(cutRightTool));  // X<0, Y<0
+
+    return [
+      { key: 'q1', solid: q1 },
+      { key: 'q2', solid: q2 },
+      { key: 'q3', solid: q3 },
+      { key: 'q4', solid: q4 },
+    ];
+  }
+
+  // Default: halves at Y=0
+  const cutFrontTool = track(makeBox([-B, -B, -B], [B, 0, B]));
+  const frontHalf = track(shape.cut(cutFrontTool));
+  const cutBackTool = track(makeBox([-B, 0, -B], [B, B, B]));
+  const backHalf = track(shape.cut(cutBackTool));
+
+  return [
+    { key: 'front', solid: frontHalf },
+    { key: 'back', solid: backHalf },
+  ];
+}
+
+/**
+ * Generate the outer mould: a cylindrical shell offset from the inner mould,
+ * split into halves or quarters.
+ *
+ * The outer mould is a simple cylinder-like shape (uniform radius based on
+ * the widest point of the pot profile + cavity gap + wall thickness).
+ * This matches the ShapeCast approach: flat outer wall for easy clamping.
+ *
+ * IMPORTANT radius calculation:
+ *   innerMouldOuterRadius = maxProfileRadius + wallThickness  (shell grows outward)
+ *   outerMouldInnerRadius = innerMouldOuterRadius + cavityGap
+ *   outerMouldOuterRadius = outerMouldInnerRadius + outerWallThickness
+ *
+ * @param {Array} scaledPoints - Shrinkage-scaled profile points (same as inner mould input).
+ * @param {Array} mouldProfile - The full mould profile (with slip well if present).
+ * @param {Object} mouldParams - Mould generation parameters.
+ * @param {Function} track - The withCleanup track function.
+ * @returns {Array<{ key: string, solid: Object }>} Named split pieces.
+ */
+function generateOuterMould(scaledPoints, mouldProfile, mouldParams, track) {
+  const {
+    wallThickness = 2.4,
+    cavityGap = 25,
+    splitCount = 2,
+    outerWallThickness = 2.4,
+  } = mouldParams;
+
+  // Calculate outer mould dimensions
+  // maxProfileRadius is the widest point of the shrinkage-scaled profile
+  const maxProfileRadius = Math.max(...scaledPoints.map(p => p.x));
+
+  // Inner mould shell grows OUTWARD by wallThickness, so its outer surface is:
+  const innerMouldOuterRadius = maxProfileRadius + wallThickness;
+
+  // Outer mould starts beyond the cavity gap
+  const outerMouldInnerRadius = innerMouldOuterRadius + cavityGap;
+  const outerMouldOuterRadius = outerMouldInnerRadius + outerWallThickness;
+
+  // Height matches the full mould profile (including slip well)
+  const bottomZ = mouldProfile[0].y;
+  const topZ = mouldProfile[mouldProfile.length - 1].y;
+
+  // Build outer mould as a revolved rectangular cross-section.
+  // This creates a cylindrical shell (uniform radius, open top, closed bottom).
+  // The profile is: inner-bottom -> inner-top -> outer-top -> outer-bottom
+  // When closed back to axis by buildAndRevolve, the bottom becomes solid.
+  const outerProfile = [
+    { x: outerMouldInnerRadius, y: bottomZ, type: 'line' },
+    { x: outerMouldInnerRadius, y: topZ, type: 'line' },
+    { x: outerMouldOuterRadius, y: topZ, type: 'line' },
+    { x: outerMouldOuterRadius, y: bottomZ, type: 'line' },
+  ];
+
+  const outerSolid = track(buildAndRevolve(outerProfile));
+
+  // Split into halves or quarters
+  return splitSolid(outerSolid, splitCount, track);
+}
+
+/**
  * Generate mould parts (proof model + inner mould) from a profile.
  *
  * The proof model is the original profile revolved at fired dimensions.
@@ -349,6 +463,9 @@ function generateMouldParts(profilePoints, mouldParams) {
     shrinkageRate = 0.13,
     wallThickness = 2.4,
     slipWellType = 'none',
+    cavityGap = 25,
+    splitCount = 2,
+    outerWallThickness = 2.4,
   } = mouldParams || {};
 
   const meshOpts = { tolerance: 0.1, angularTolerance: 0.3 };
@@ -396,6 +513,19 @@ function generateMouldParts(profilePoints, mouldParams) {
       return results; // Returns proof but no inner-mould mesh
     }
     results['inner-mould'] = toTransferableMesh(shelledMould.mesh(meshOpts));
+
+    // Outer mould: cylindrical shell split into halves or quarters
+    try {
+      const outerPieces = generateOuterMould(scaledPoints, mouldProfile, mouldParams, track);
+      for (const piece of outerPieces) {
+        results[`outer-${piece.key}`] = toTransferableMesh(piece.solid.mesh(meshOpts));
+      }
+    } catch (outerErr) {
+      console.warn('[worker] Outer mould generation failed:', outerErr.message);
+      results['outer-mould-error'] = {
+        message: `Outer mould failed: ${outerErr.message}`,
+      };
+    }
 
     return results;
   });
