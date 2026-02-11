@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 4 IN PROGRESS -- Live 3D Preview (1/3 plans done). Next: 04-02 (camera controls and annotations).
+**Current focus:** Phase 4 IN PROGRESS -- Live 3D Preview (2/3 plans done). Next: 04-03 (camera controls and annotations).
 
 ## Current Position
 
 Phase: 4 of 9 (Live 3D Preview)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-11 -- Completed 04-01-PLAN.md (LatheGeometry fallback + part manager)
+Last activity: 2026-02-11 -- Completed 04-02-PLAN.md (real-time drag preview with dual-tier pipeline)
 
-Progress: [█████████░░░░░░░░░░░░░░░░] 38% (9/24 plans)
+Progress: [██████████░░░░░░░░░░░░░░░] 42% (10/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: ~4 minutes
-- Total execution time: ~35.5 minutes
+- Total plans completed: 10
+- Average duration: ~3.7 minutes
+- Total execution time: ~36.8 minutes
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [█████████░░░░░░░░░░░░░░
 | 1. WASM Foundation | 3/3 | ~12m | ~4m |
 | 2. Profile Editor Core | 3/3 | ~13m | ~4m |
 | 3. Profile Editor Extended | 2/2 | ~7m | ~3.5m |
-| 4. Live 3D Preview | 1/3 | ~3.5m | ~3.5m |
+| 4. Live 3D Preview | 2/3 | ~4.8m | ~2.4m |
 
 **Recent Trend:**
-- Last 5 plans: 02-03 (~5m), 03-01 (~4m), 03-02 (~3m), 04-01 (~3.5m)
-- Trend: Stable at ~3.5-4m/plan
+- Last 5 plans: 03-01 (~4m), 03-02 (~3m), 04-01 (~3.5m), 04-02 (~1.3m)
+- Trend: Accelerating -- simpler wiring plans execute faster
 
 *Updated after each plan completion*
 
@@ -90,6 +90,9 @@ Recent decisions affecting current work:
 - [04-01]: 10 intermediate samples per bezier segment for LatheGeometry
 - [04-01]: Dual-path rendering: LatheGeometry instant + WASM async in onProfileChange
 - [04-01]: Backward-compatible updateMesh/clearMesh wrappers around part manager
+- [04-02]: notifyLivePreview fires on every mouseDrag without throttling (LatheGeometry is ~1ms)
+- [04-02]: Separate onLivePreview callback from onChange for lightweight drag path
+- [04-02]: Preview status shows 'Preview' during drag, CAD stats after WASM result
 
 ### Pending Todos
 
@@ -101,6 +104,7 @@ Recent decisions affecting current work:
 - Browser validation of parametric preset slider interaction and mode switching.
 - Browser validation of SVG import parsing and reference image overlay.
 - Browser validation of LatheGeometry visual quality and preview status overlay positioning.
+- Browser validation of real-time drag preview (3D updates during drag, WASM upgrade on release).
 
 ### Blockers/Concerns
 
@@ -112,5 +116,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed 04-01-PLAN.md (LatheGeometry fallback + part manager)
+Stopped at: Completed 04-02-PLAN.md (real-time drag preview with dual-tier pipeline)
 Resume file: None
