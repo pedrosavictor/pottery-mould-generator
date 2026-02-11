@@ -98,6 +98,10 @@ function log(msg) {
 function onLivePreview(profilePoints) {
   if (!profilePoints || profilePoints.length < 2) return;
   preview3d.updateLatheFallback(profilePoints);
+  lastProfilePoints = profilePoints;
+  if (showMeasurements) {
+    preview3d.updateMeasurements(profilePoints, true);
+  }
   updatePreviewStatus('Preview');
 }
 
@@ -118,6 +122,10 @@ async function onProfileChange(profilePoints) {
 
   // Instant LatheGeometry update (always available, no WASM dependency)
   preview3d.updateLatheFallback(profilePoints);
+  lastProfilePoints = profilePoints;
+  if (showMeasurements) {
+    preview3d.updateMeasurements(profilePoints, true);
+  }
   updatePreviewStatus('Preview');
 
   // If WASM not ready, LatheGeometry is all we show
@@ -515,6 +523,64 @@ function initReferenceImage() {
 }
 
 // ============================================================
+// View Controls (3D visibility, exploded view, measurements)
+// ============================================================
+
+/** Whether 3D measurements are currently shown. */
+let showMeasurements = false;
+
+/** Latest profile points for measurement updates. */
+let lastProfilePoints = null;
+
+/**
+ * Initialize 3D view controls: part visibility toggles, assembled/exploded
+ * view buttons, and measurement annotation checkbox.
+ *
+ * Called once during DOMContentLoaded.
+ */
+function initViewControls() {
+  // --- Part visibility toggles ---
+  const chkPot = document.getElementById('chk-show-pot');
+  if (chkPot) {
+    chkPot.addEventListener('change', () => {
+      preview3d.setPartVisibility('pot', chkPot.checked);
+    });
+  }
+
+  // Inner, outer, ring, proof are disabled for now (Phases 5-6).
+  // When enabled, they'll wire to their respective part names.
+
+  // --- Assembled / Exploded view buttons ---
+  const btnAssembled = document.getElementById('btn-assembled');
+  const btnExploded = document.getElementById('btn-exploded');
+
+  if (btnAssembled) {
+    btnAssembled.addEventListener('click', () => {
+      preview3d.setExplodedView(false);
+      btnAssembled.classList.add('active');
+      if (btnExploded) btnExploded.classList.remove('active');
+    });
+  }
+
+  if (btnExploded) {
+    btnExploded.addEventListener('click', () => {
+      preview3d.setExplodedView(true);
+      if (btnAssembled) btnAssembled.classList.remove('active');
+      btnExploded.classList.add('active');
+    });
+  }
+
+  // --- Measurement toggle ---
+  const chkMeasurements = document.getElementById('chk-show-measurements');
+  if (chkMeasurements) {
+    chkMeasurements.addEventListener('change', () => {
+      showMeasurements = chkMeasurements.checked;
+      preview3d.updateMeasurements(lastProfilePoints, showMeasurements);
+    });
+  }
+}
+
+// ============================================================
 // Initialization
 // ============================================================
 
@@ -551,6 +617,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Initialize parametric controls (mode toggle, preset selector, sliders)
   initParametricControls();
 
+  // Initialize 3D view controls (visibility toggles, exploded view, measurements)
+  initViewControls();
+
   // Start in parametric mode: disable direct editing tools
   if (profileEditor) {
     profileEditor.setToolsEnabled(false);
@@ -569,6 +638,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Instant 3D preview: show LatheGeometry from the initial profile
   // This renders in ~1ms -- user sees a 3D pot before WASM loads
   preview3d.updateLatheFallback(initialPoints);
+  lastProfilePoints = initialPoints;
   updatePreviewStatus('Preview');
   log('Instant LatheGeometry preview shown');
 

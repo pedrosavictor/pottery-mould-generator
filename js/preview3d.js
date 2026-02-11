@@ -419,6 +419,248 @@ export function clearMesh() {
   }
 }
 
+// ============================================================
+// Exploded View
+// ============================================================
+
+/** Whether exploded view is active. */
+let explodedView = false;
+
+/**
+ * Vertical offsets for parts in exploded view (mm).
+ * When more parts are added (Phases 5-6), their offsets go here.
+ */
+const EXPLODED_OFFSETS = {
+  'pot':         0,
+  'inner-mould': 100,
+  'outer-mould': 200,
+  'ring':        300,
+  'proof':       400,
+};
+
+/**
+ * Set exploded/assembled view mode.
+ *
+ * When exploded=true, each named part is offset vertically so all parts
+ * are visible without overlap. When false, all parts return to y=0.
+ *
+ * Currently only the 'pot' part exists (y=0 in both modes). Future parts
+ * added in Phases 5-6 will use the EXPLODED_OFFSETS table.
+ *
+ * @param {boolean} exploded - true for exploded, false for assembled.
+ */
+export function setExplodedView(exploded) {
+  explodedView = exploded;
+
+  for (const [name, entry] of parts) {
+    const offset = exploded ? (EXPLODED_OFFSETS[name] || 0) : 0;
+    entry.group.position.y = offset;
+  }
+
+  console.log(`[preview3d] View mode: ${exploded ? 'exploded' : 'assembled'}`);
+}
+
+// ============================================================
+// 3D Measurement Annotations
+// ============================================================
+
+/** @type {THREE.Group|null} */
+let measurementGroup = null;
+
+/**
+ * Create a text sprite from a string.
+ *
+ * Renders text onto a canvas, creates a texture, and returns a THREE.Sprite
+ * positioned at the given 3D coordinates. This avoids extra dependencies
+ * like CSS2DRenderer.
+ *
+ * @param {string} text - Label text.
+ * @param {{ x: number, y: number, z: number }} position - World position.
+ * @returns {THREE.Sprite}
+ */
+function createTextSprite(text, position) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  // Size canvas to fit text
+  const fontSize = 28;
+  ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+  const metrics = ctx.measureText(text);
+  const textWidth = metrics.width + 16;
+  const textHeight = fontSize + 12;
+
+  canvas.width = Math.ceil(textWidth);
+  canvas.height = Math.ceil(textHeight);
+
+  // Draw background
+  ctx.fillStyle = 'rgba(45, 45, 45, 0.8)';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, canvas.width, canvas.height, 4);
+  ctx.fill();
+
+  // Draw text
+  ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+  ctx.fillStyle = '#f5f0eb';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    depthTest: false,
+    sizeAttenuation: false,
+  });
+
+  const sprite = new THREE.Sprite(material);
+  sprite.position.set(position.x, position.y, position.z);
+
+  // Scale to reasonable screen size (sizeAttenuation=false uses NDC units)
+  const aspect = canvas.width / canvas.height;
+  sprite.scale.set(0.08 * aspect, 0.08, 1);
+
+  return sprite;
+}
+
+/**
+ * Create a dashed line between two 3D points.
+ *
+ * @param {THREE.Vector3} start
+ * @param {THREE.Vector3} end
+ * @returns {THREE.Line}
+ */
+function createDashedLine(start, end) {
+  const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
+  const material = new THREE.LineDashedMaterial({
+    color: 0x555555,
+    dashSize: 3,
+    gapSize: 2,
+    linewidth: 1,
+    depthTest: false,
+  });
+  const line = new THREE.Line(geometry, material);
+  line.computeLineDistances();
+  return line;
+}
+
+/**
+ * Update 3D measurement annotations from profile points.
+ *
+ * Calculates height, rim diameter, max (belly) diameter, and foot diameter
+ * from the profile point array. Creates dashed lines and text labels in 3D
+ * space, all contained in a `measurementGroup` for easy show/hide.
+ *
+ * Coordinate note: LatheGeometry uses Y-up (x=radius, y=height).
+ * Measurement lines are placed in the XY plane at z=0.
+ *
+ * @param {Array<{ x: number, y: number }>} profilePoints - Profile points.
+ * @param {boolean} visible - Whether measurements should be shown.
+ */
+export function updateMeasurements(profilePoints, visible) {
+  // Remove existing measurements
+  if (measurementGroup) {
+    measurementGroup.traverse((child) => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (child.material.map) child.material.map.dispose();
+        child.material.dispose();
+      }
+    });
+    if (scene) scene.remove(measurementGroup);
+    measurementGroup = null;
+  }
+
+  if (!visible || !profilePoints || profilePoints.length < 2 || !scene) {
+    return;
+  }
+
+  measurementGroup = new THREE.Group();
+  measurementGroup.name = 'measurements';
+
+  // Calculate dimensions from profile points
+  let minY = Infinity, maxY = -Infinity;
+  let maxX = 0;
+  let maxXIndex = 0;
+
+  for (let i = 0; i < profilePoints.length; i++) {
+    const p = profilePoints[i];
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+    if (p.x > maxX) {
+      maxX = p.x;
+      maxXIndex = i;
+    }
+  }
+
+  const height = maxY - minY;
+  const firstPt = profilePoints[0];
+  const lastPt = profilePoints[profilePoints.length - 1];
+  const rimRadius = lastPt.x;
+  const footRadius = firstPt.x;
+  const maxRadius = maxX;
+  const bellyY = profilePoints[maxXIndex].y;
+
+  const rimDiameter = rimRadius * 2;
+  const footDiameter = footRadius * 2;
+  const maxDiameter = maxRadius * 2;
+
+  // Offset for height line (slightly outside the max radius)
+  const hLineX = maxRadius + 15;
+
+  // --- Height measurement line ---
+  const hStart = new THREE.Vector3(hLineX, minY, 0);
+  const hEnd = new THREE.Vector3(hLineX, maxY, 0);
+  measurementGroup.add(createDashedLine(hStart, hEnd));
+
+  // Height tick marks
+  const tickLen = 5;
+  measurementGroup.add(createDashedLine(
+    new THREE.Vector3(hLineX - tickLen, minY, 0),
+    new THREE.Vector3(hLineX + tickLen, minY, 0)
+  ));
+  measurementGroup.add(createDashedLine(
+    new THREE.Vector3(hLineX - tickLen, maxY, 0),
+    new THREE.Vector3(hLineX + tickLen, maxY, 0)
+  ));
+
+  // Height label at midpoint
+  const hLabel = createTextSprite(
+    `${height.toFixed(1)} mm`,
+    { x: hLineX + 20, y: (minY + maxY) / 2, z: 0 }
+  );
+  measurementGroup.add(hLabel);
+
+  // --- Rim diameter line ---
+  const rimY = maxY;
+  const rimStart = new THREE.Vector3(-rimRadius, rimY, 0);
+  const rimEnd = new THREE.Vector3(rimRadius, rimY, 0);
+  measurementGroup.add(createDashedLine(rimStart, rimEnd));
+
+  // Rim label
+  const rimLabel = createTextSprite(
+    `${rimDiameter.toFixed(1)} mm dia`,
+    { x: 0, y: rimY + 12, z: 0 }
+  );
+  measurementGroup.add(rimLabel);
+
+  // --- Max (belly) diameter line (only if significantly wider than rim) ---
+  if (maxDiameter > rimDiameter + 4) {
+    const bellyStart = new THREE.Vector3(-maxRadius, bellyY, 0);
+    const bellyEnd = new THREE.Vector3(maxRadius, bellyY, 0);
+    measurementGroup.add(createDashedLine(bellyStart, bellyEnd));
+
+    const bellyLabel = createTextSprite(
+      `${maxDiameter.toFixed(1)} mm`,
+      { x: 0, y: bellyY - 12, z: 0 }
+    );
+    measurementGroup.add(bellyLabel);
+  }
+
+  scene.add(measurementGroup);
+}
+
 /**
  * Returns the WebGL renderer instance for testing/debugging.
  *
