@@ -53,6 +53,8 @@ export function createDrawTool(editorState) {
       // Select the newly inserted segment so the user can see it
       editorState.selectedSegmentIndex = newSegment.index;
       editorState.requestRender();
+      // Instant 3D preview feedback before full WASM pipeline
+      editorState.notifyLivePreview();
       editorState.notifyChange();
     }
   };

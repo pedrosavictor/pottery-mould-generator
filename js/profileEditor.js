@@ -58,7 +58,7 @@ import { createProfile } from './profileData.js';
  * @returns {{ getProfileData: function, setProfileData: function }}
  */
 export function initProfileEditor(canvasId, options = {}) {
-  const { initialProfile, onChange } = options;
+  const { initialProfile, onChange, onLivePreview } = options;
 
   // --- 1. Initialize Paper.js canvas and layers ---
   const { project, view, layers } = initCanvas(canvasId);
@@ -151,6 +151,20 @@ export function initProfileEditor(canvasId, options = {}) {
 
       if (onChange) {
         onChange(currentProfilePoints);
+      }
+    },
+
+    /**
+     * Fire a lightweight preview update during drag.
+     * Syncs path -> profile points and calls onLivePreview callback.
+     * Does NOT push to undo stack, does NOT run full constraint validation.
+     * Called during mouseDrag for instant 3D preview feedback.
+     */
+    notifyLivePreview() {
+      if (!path) return;
+      const points = syncPathToProfile(path, transform);
+      if (onLivePreview) {
+        onLivePreview(points);
       }
     },
   };

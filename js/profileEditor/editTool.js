@@ -151,6 +151,9 @@ export function createEditTool(editorState) {
     // Live update handles overlay
     editorState.requestRender();
 
+    // Fire lightweight live preview (LatheGeometry update in app.js)
+    editorState.notifyLivePreview();
+
     // Throttled visual validation feedback during drag
     if (dragCount % VALIDATION_THROTTLE === 0 && editorState.path) {
       clearViolations(editorState.layers.overlay);
