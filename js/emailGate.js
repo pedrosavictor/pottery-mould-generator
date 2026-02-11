@@ -18,6 +18,7 @@ const STORAGE_KEYS = {
 // Module state
 let modalCallback = null;
 let elements = {};
+let previouslyFocusedElement = null;
 
 /**
  * Initialize the email gate module.
@@ -62,13 +63,65 @@ export function initEmailGate() {
     elements.btnChangeEmail.addEventListener('click', handleChangeEmail);
   }
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && elements.modal && !elements.modal.classList.contains('hidden')) {
-      hideEmailModal();
-    }
-  });
+  document.addEventListener('keydown', handleModalKeydown);
 
   console.log('Email gate initialized');
+}
+
+/**
+ * Handle keydown events for modal: Escape to close, Tab to trap focus.
+ * @param {KeyboardEvent} e
+ */
+function handleModalKeydown(e) {
+  if (!elements.modal || elements.modal.classList.contains('hidden')) return;
+
+  if (e.key === 'Escape') {
+    hideEmailModal();
+    return;
+  }
+
+  if (e.key === 'Tab') {
+    trapFocusInModal(e);
+  }
+}
+
+/**
+ * Trap focus within the visible modal content.
+ * On Tab from last focusable element, cycle to first.
+ * On Shift+Tab from first focusable element, cycle to last.
+ * @param {KeyboardEvent} e
+ */
+function trapFocusInModal(e) {
+  const modalContent = elements.modal.querySelector('.modal-content');
+  if (!modalContent) return;
+
+  const focusableSelectors = 'button:not([disabled]):not(.hidden *), input:not([disabled]):not([type="hidden"]):not(.hidden *), select:not([disabled]):not(.hidden *), textarea:not([disabled]):not(.hidden *), a[href]:not(.hidden *), [tabindex]:not([tabindex="-1"]):not(.hidden *)';
+  const focusableElements = Array.from(modalContent.querySelectorAll(focusableSelectors))
+    .filter(el => {
+      // Exclude elements inside hidden parent views
+      const parentView = el.closest('#modal-signup-view, #modal-verify-view');
+      if (parentView && parentView.classList.contains('hidden')) return false;
+      return el.offsetParent !== null || el.style.display !== 'none';
+    });
+
+  if (focusableElements.length === 0) return;
+
+  const firstFocusable = focusableElements[0];
+  const lastFocusable = focusableElements[focusableElements.length - 1];
+
+  if (e.shiftKey) {
+    // Shift+Tab: if on first element, wrap to last
+    if (document.activeElement === firstFocusable) {
+      e.preventDefault();
+      lastFocusable.focus();
+    }
+  } else {
+    // Tab: if on last element, wrap to first
+    if (document.activeElement === lastFocusable) {
+      e.preventDefault();
+      firstFocusable.focus();
+    }
+  }
 }
 
 /**
@@ -147,12 +200,19 @@ function showModal(view, onSuccess, email = null) {
   modalCallback = onSuccess;
   if (!elements.modal) return;
 
+  // A11Y-02: Save the element that triggered the modal so we can restore focus on close
+  previouslyFocusedElement = document.activeElement;
+
   const signupView = document.getElementById('modal-signup-view');
   const verifyView = document.getElementById('modal-verify-view');
 
   const isSignup = view === 'signup';
   if (signupView) signupView.classList.toggle('hidden', !isSignup);
   if (verifyView) verifyView.classList.toggle('hidden', isSignup);
+
+  // Update aria-labelledby to match the visible view heading
+  elements.modal.setAttribute('aria-labelledby',
+    isSignup ? 'modal-signup-heading' : 'modal-verify-heading');
 
   if (!isSignup && email) {
     const emailDisplay = document.getElementById('verify-email-display');
@@ -166,6 +226,8 @@ function showModal(view, onSuccess, email = null) {
 
   if (isSignup && elements.emailInput) {
     setTimeout(() => elements.emailInput.focus(), 100);
+  } else if (!isSignup && elements.btnCheckVerified) {
+    setTimeout(() => elements.btnCheckVerified.focus(), 100);
   }
 
   document.body.style.overflow = 'hidden';
@@ -205,6 +267,12 @@ export function hideEmailModal() {
     elements.emailForm.reset();
   }
   hideError();
+
+  // A11Y-02: Restore focus to the element that opened the modal
+  if (previouslyFocusedElement && typeof previouslyFocusedElement.focus === 'function') {
+    previouslyFocusedElement.focus();
+    previouslyFocusedElement = null;
+  }
 }
 
 /**
@@ -399,6 +467,11 @@ function handleChangeEmail() {
   const verifyView = document.getElementById('modal-verify-view');
   if (signupView) signupView.classList.remove('hidden');
   if (verifyView) verifyView.classList.add('hidden');
+
+  // Update aria-labelledby to match the now-visible signup heading
+  if (elements.modal) {
+    elements.modal.setAttribute('aria-labelledby', 'modal-signup-heading');
+  }
 
   if (elements.emailInput) {
     setTimeout(() => elements.emailInput.focus(), 100);
