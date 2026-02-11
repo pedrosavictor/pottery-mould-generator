@@ -505,8 +505,10 @@ function generateOuterMould(scaledPoints, mouldProfile, mouldParams, track) {
   // Outer mould extends from inner mould bottom to 25mm ABOVE inner mould top.
   // The extra height above the inner mould creates an open-top pouring space
   // for plaster (like ShapeCast). Plaster is poured from above into the cavity.
+  // The bottom aligns with the shelled inner mould bottom (profile bottom - wallThickness)
+  // so the outer mould, inner mould, and ring all share the same base plane.
   const pourExtension = mouldParams.pourExtension || 25;
-  const bottomZ = mouldProfile[0].y;
+  const bottomZ = mouldProfile[0].y - wallThickness;
   const topZ = mouldProfile[mouldProfile.length - 1].y + pourExtension;
 
   // Build outer mould as a revolved rectangular cross-section.
@@ -547,22 +549,30 @@ function generateRing(scaledPoints, mouldProfile, mouldParams, track) {
     cavityGap = 25,
     splitCount = 2,
     ringHeight = 8,
+    clearance = 0.3,
   } = mouldParams;
 
   const maxProfileRadius = Math.max(...scaledPoints.map(p => p.x));
   const bottomZ = mouldProfile[0].y;
 
+  // The inner mould is shelled with -wallThickness (outward). The shell grows
+  // downward at the bottom, so the actual bottom of the shelled mould is at
+  // bottomZ - wallThickness. The ring's top surface must align with this so
+  // the inner mould sits flush on the ring (no gap).
+  const ringTopZ = bottomZ - wallThickness;
+
   // Ring spans from inner mould outer surface to outer mould inner surface.
-  // Small clearance (0.5mm) on inner edge so the inner mould sits inside freely.
-  const ringInnerRadius = maxProfileRadius + wallThickness + 0.5;
+  // Use user-provided clearance (from params.clearance) on inner edge so the
+  // inner mould sits inside freely -- not a hardcoded value.
+  const ringInnerRadius = maxProfileRadius + wallThickness + clearance;
   const ringOuterRadius = maxProfileRadius + wallThickness + cavityGap;
 
-  // Ring cross-section: rectangle from ringInner to ringOuter, below bottomZ
+  // Ring cross-section: rectangle from ringInner to ringOuter, below ringTopZ
   const ringProfile = [
-    { x: ringInnerRadius, y: bottomZ - ringHeight, type: 'line' },
-    { x: ringInnerRadius, y: bottomZ, type: 'line' },
-    { x: ringOuterRadius, y: bottomZ, type: 'line' },
-    { x: ringOuterRadius, y: bottomZ - ringHeight, type: 'line' },
+    { x: ringInnerRadius, y: ringTopZ - ringHeight, type: 'line' },
+    { x: ringInnerRadius, y: ringTopZ, type: 'line' },
+    { x: ringOuterRadius, y: ringTopZ, type: 'line' },
+    { x: ringOuterRadius, y: ringTopZ - ringHeight, type: 'line' },
   ];
 
   const ringSolid = track(revolveClosedProfile(ringProfile));
