@@ -38,6 +38,7 @@ import { importSVGFile } from './svgImport.js';
 import { loadReferenceImage, clearReferenceImage, setReferenceOpacity } from './referenceImage.js';
 import { downloadMouldZip } from './exportManager.js';
 import { calculatePlaster, formatPlasterResults, formatVolume } from './plasterCalculator.js';
+import { initEmailGate, checkEmailGate, showEmailModal, showVerifyModal, trackDownload } from './emailGate.js';
 
 // ============================================================
 // DOM References (populated on DOMContentLoaded)
@@ -910,6 +911,43 @@ async function updatePlasterCalculator() {
 // ============================================================
 
 /**
+ * Execute the actual download after email gate passes.
+ * @param {HTMLButtonElement} btnDownload
+ * @param {HTMLElement} exportStatus
+ */
+async function proceedWithDownload(btnDownload, exportStatus) {
+  btnDownload.disabled = true;
+  btnDownload.textContent = 'Exporting...';
+
+  try {
+    await downloadMouldZip(lastProfilePoints, mouldParams, exportResolution, {
+      onProgress: (msg) => {
+        if (exportStatus) exportStatus.textContent = msg;
+      },
+    });
+    if (exportStatus) exportStatus.textContent = 'Download started!';
+    setTimeout(() => {
+      if (exportStatus) exportStatus.textContent = '';
+    }, 3000);
+
+    // Track download for analytics (non-blocking)
+    trackDownload({
+      type: 'mould-stl',
+      resolution: exportResolution,
+      shrinkage: mouldParams.shrinkageRate,
+      wallThickness: mouldParams.wallThickness,
+      splitCount: mouldParams.splitCount,
+    }).catch(() => {});
+  } catch (err) {
+    console.error('[app] Export error:', err);
+    if (exportStatus) exportStatus.textContent = 'Export failed: ' + err.message;
+  } finally {
+    btnDownload.disabled = false;
+    btnDownload.textContent = 'Download STL (ZIP)';
+  }
+}
+
+/**
  * Initialize export controls: resolution toggle, download button, STEP placeholder.
  * Called once during DOMContentLoaded.
  */
@@ -935,7 +973,7 @@ function initExportControls() {
     });
   }
 
-  // Download button
+  // Download button (gated through email gate)
   if (btnDownload) {
     btnDownload.addEventListener('click', async () => {
       if (!lastProfilePoints || lastProfilePoints.length < 2) {
@@ -943,26 +981,22 @@ function initExportControls() {
         return;
       }
 
-      btnDownload.disabled = true;
-      btnDownload.textContent = 'Exporting...';
+      // Check email gate before downloading
+      const gateResult = await checkEmailGate();
 
-      try {
-        await downloadMouldZip(lastProfilePoints, mouldParams, exportResolution, {
-          onProgress: (msg) => {
-            if (exportStatus) exportStatus.textContent = msg;
-          },
-        });
-        if (exportStatus) exportStatus.textContent = 'Download started!';
-        setTimeout(() => {
-          if (exportStatus) exportStatus.textContent = '';
-        }, 3000);
-      } catch (err) {
-        console.error('[app] Export error:', err);
-        if (exportStatus) exportStatus.textContent = 'Export failed: ' + err.message;
-      } finally {
-        btnDownload.disabled = false;
-        btnDownload.textContent = 'Download STL (ZIP)';
+      if (!gateResult.canDownload) {
+        if (gateResult.needsVerification) {
+          // Returning user who hasn't verified
+          showVerifyModal(gateResult.email, () => proceedWithDownload(btnDownload, exportStatus));
+        } else {
+          // New user -- collect email
+          showEmailModal(() => proceedWithDownload(btnDownload, exportStatus));
+        }
+        return;
       }
+
+      // Email gate passed -- proceed
+      await proceedWithDownload(btnDownload, exportStatus);
     });
   }
 
@@ -1023,6 +1057,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Initialize export controls (resolution toggle, download button)
   initExportControls();
+
+  // Initialize email gate (modal, event listeners)
+  initEmailGate();
 
   // Start in parametric mode: disable direct editing tools
   if (profileEditor) {

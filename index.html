@@ -14,6 +14,7 @@
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.18/paper-core.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
@@ -275,6 +276,37 @@
         </div>
       </aside>
     </main>
+
+    <!-- Email Gate Modal -->
+    <div id="email-modal" class="hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <!-- Signup view -->
+        <div id="modal-signup-view">
+          <button id="modal-close" class="modal-close-btn" type="button">&times;</button>
+          <h2>Get Your Mould Files</h2>
+          <p class="modal-subtitle">Enter your email to download. We'll send you pottery tips too!</p>
+          <form id="email-form">
+            <input type="text" id="modal-first-name" class="modal-input" placeholder="First name (optional)" autocomplete="given-name">
+            <input type="email" id="modal-email" class="modal-input" placeholder="Email address" required autocomplete="email">
+            <p id="email-error" class="modal-error hidden"></p>
+            <button type="submit" class="btn-primary modal-submit">Download Mould Files</button>
+          </form>
+          <p class="modal-privacy">We respect your privacy. Unsubscribe anytime.</p>
+        </div>
+        <!-- Verify view -->
+        <div id="modal-verify-view" class="hidden">
+          <button id="modal-close-verify" class="modal-close-btn" type="button">&times;</button>
+          <h2>Verify Your Email</h2>
+          <p>We sent a confirmation email to <strong id="verify-email-display"></strong>.</p>
+          <p>Please click the link in the email, then come back here.</p>
+          <button id="btn-check-verified" class="btn-primary" type="button">I've Confirmed - Check Now</button>
+          <button id="btn-resend-verify" class="btn-secondary modal-btn-full" type="button">Resend Verification Email</button>
+          <button id="btn-change-email" class="btn-link" type="button">Use a different email</button>
+          <p id="verify-message" class="verify-message hidden"></p>
+        </div>
+      </div>
+    </div>
   </div>
   <script type="module" src="./js/app.js"></script>
 </body>
