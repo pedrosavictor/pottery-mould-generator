@@ -710,13 +710,12 @@ function buildMouldBySubtraction(mouldProfile, mouldSolid, wallThickness, topZ, 
   // Subtract inner from outer to get hollow wall
   let hollow = track(outerSolid.cut(mouldSolid));
 
-  // Cut the top rim disc to create the mould opening.
-  // The disc is at topZ, thickness = wallThickness.
-  // Use a cylinder slightly larger than the max radius to ensure clean cut.
+  // Cut the top cap to create the mould opening.
+  // The cap is the thin annular disc at Z=topZ between inner and outer surfaces.
+  // Use a thin cutter centered on topZ to remove only the cap, not the side walls.
   const maxR = Math.max(...mouldProfile.map(p => p.x)) + wallThickness + 5;
-  const cutThickness = wallThickness + 2;
   const topCutter = track(
-    makeCylinder(maxR, cutThickness, [0, 0, topZ - cutThickness + 0.5], [0, 0, 1])
+    makeCylinder(maxR, 2, [0, 0, topZ - 0.5], [0, 0, 1])
   );
   hollow = track(hollow.cut(topCutter));
 
@@ -779,7 +778,7 @@ function generateMouldParts(profilePoints, mouldParams) {
     // Shell with NEGATIVE thickness: wall grows OUTWARD from pot surface.
     // FaceFinder.inPlane("XY", topZ) selects the flat top face (rim/well top plane)
     // to leave open, creating the mould opening.
-    let shelledMould;
+    let shelledMould = null;
     try {
       shelledMould = track(
         mouldSolid.shell(-wallThickness, (f) => f.inPlane('XY', topZ))
@@ -796,10 +795,12 @@ function generateMouldParts(profilePoints, mouldParams) {
         results['inner-mould-error'] = {
           message: `Inner mould generation failed: ${safeErrorMessage(fallbackErr)}. Try simplifying the profile.`,
         };
-        return results;
+        // Don't return -- outer mould and ring are independent and should still generate
       }
     }
-    results['inner-mould'] = toTransferableMesh(shelledMould.mesh(meshOpts));
+    if (shelledMould) {
+      results['inner-mould'] = toTransferableMesh(shelledMould.mesh(meshOpts));
+    }
 
     // Outer mould: cylindrical shell split into halves or quarters
     try {
@@ -1016,15 +1017,23 @@ async function exportMouldPartsForDownload(profilePoints, mouldParams, resolutio
     volumes.innerMouldVolumeMm3 = Math.round(innerMouldVolumeMm3);
     const topZ = mouldProfile[mouldProfile.length - 1].y;
 
+    let shelledMould = null;
     try {
-      const shelledMould = track(
+      shelledMould = track(
         mouldSolid.shell(-wallThickness, (f) => f.inPlane('XY', topZ))
       );
+    } catch (shellErr) {
+      console.warn('[worker] Export: shell failed, trying fallback:', safeErrorMessage(shellErr));
+      try {
+        shelledMould = track(buildMouldBySubtraction(mouldProfile, mouldSolid, wallThickness, topZ, track));
+      } catch (fallbackErr) {
+        console.warn('[worker] Export: fallback also failed:', safeErrorMessage(fallbackErr));
+      }
+    }
+    if (shelledMould) {
       stlBlobMap['inner-mould'] = shelledMould.blobSTL({ binary: true, ...meshOpts });
       stepBlobMap['inner-mould'] = safeStepBlob(shelledMould);
       partNames.push('inner-mould');
-    } catch (shellErr) {
-      console.warn('[worker] Export: shell failed, skipping inner-mould:', safeErrorMessage(shellErr));
     }
 
     // Outer mould pieces
