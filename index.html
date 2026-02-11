@@ -85,6 +85,28 @@
           </div>
         </div>
 
+        <div id="import-controls">
+          <h3>Import</h3>
+          <div class="import-row">
+            <label class="import-btn" for="input-svg-upload">
+              Upload SVG
+              <input type="file" id="input-svg-upload" accept=".svg" hidden />
+            </label>
+            <label class="import-btn" for="input-ref-image">
+              Reference Photo
+              <input type="file" id="input-ref-image" accept="image/*" hidden />
+            </label>
+          </div>
+          <div id="ref-image-controls" class="hidden">
+            <div class="slider-field">
+              <label for="slider-ref-opacity">Opacity</label>
+              <input type="range" id="slider-ref-opacity" min="0" max="1" step="0.05" value="0.3" />
+              <span class="slider-value" id="val-ref-opacity">30%</span>
+            </div>
+            <button id="btn-clear-ref" class="btn-secondary">Remove Photo</button>
+          </div>
+        </div>
+
         <div id="dimension-inputs">
           <h3>Dimensions</h3>
           <div class="dim-field">

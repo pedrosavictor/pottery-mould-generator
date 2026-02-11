@@ -29,6 +29,8 @@ import * as preview3d from './preview3d.js';
 import { getTestProfile, createProfile } from './profileData.js';
 import { initProfileEditor } from './profileEditor.js';
 import { generatePresetProfile, PRESET_DEFAULTS, PRESET_SLIDER_RANGES } from './presets/parametricPresets.js';
+import { importSVGFile } from './svgImport.js';
+import { loadReferenceImage, clearReferenceImage, setReferenceOpacity } from './referenceImage.js';
 
 // ============================================================
 // DOM References (populated on DOMContentLoaded)
@@ -356,6 +358,120 @@ function switchMode(mode) {
 }
 
 // ============================================================
+// SVG Import
+// ============================================================
+
+/**
+ * Initialize the SVG file upload handler.
+ *
+ * When a user selects an SVG file via the hidden file input, reads it as text,
+ * parses it into ProfilePoint[] using importSVGFile(), switches to freehand
+ * mode, and sets the parsed profile on the editor.
+ */
+function initSVGImport() {
+  const svgInput = document.getElementById('input-svg-upload');
+  if (!svgInput) return;
+
+  svgInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const svgString = evt.target.result;
+        const points = importSVGFile(svgString);
+
+        if (points.length < 2) {
+          alert('SVG produced too few points. Please use an SVG with a simple path.');
+          return;
+        }
+
+        // Switch to freehand mode (imported SVG is for direct editing)
+        switchMode('freehand');
+
+        const profile = createProfile(points);
+        profileEditor.setProfileData(profile);
+
+        log(`SVG imported: ${points.length} points`);
+      } catch (err) {
+        alert(err.message);
+        console.warn('[app] SVG import error:', err);
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset file input so the same file can be re-uploaded
+    svgInput.value = '';
+  });
+}
+
+// ============================================================
+// Reference Image
+// ============================================================
+
+/**
+ * Initialize the reference image upload, opacity slider, and remove button.
+ *
+ * When a user uploads an image, it is loaded as a data URL and placed on the
+ * reference layer at 30% opacity. The opacity slider and remove button become
+ * visible for control.
+ */
+function initReferenceImage() {
+  const refImageInput = document.getElementById('input-ref-image');
+  const refImageControls = document.getElementById('ref-image-controls');
+  const sliderRefOpacity = document.getElementById('slider-ref-opacity');
+  const valRefOpacity = document.getElementById('val-ref-opacity');
+  const btnClearRef = document.getElementById('btn-clear-ref');
+
+  if (refImageInput) {
+    refImageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const dataUrl = evt.target.result;
+        const layers = profileEditor.getLayers();
+        const transform = profileEditor.getTransform();
+
+        loadReferenceImage(dataUrl, layers.reference, transform);
+
+        // Show opacity controls
+        if (refImageControls) refImageControls.classList.remove('hidden');
+        // Reset opacity slider to default
+        if (sliderRefOpacity) sliderRefOpacity.value = 0.3;
+        if (valRefOpacity) valRefOpacity.textContent = '30%';
+
+        log('Reference image loaded');
+      };
+      reader.readAsDataURL(file);
+
+      // Reset file input so the same file can be re-uploaded
+      refImageInput.value = '';
+    });
+  }
+
+  if (sliderRefOpacity) {
+    sliderRefOpacity.addEventListener('input', (e) => {
+      const opacity = parseFloat(e.target.value);
+      const layers = profileEditor.getLayers();
+      setReferenceOpacity(layers.reference, opacity);
+      if (valRefOpacity) valRefOpacity.textContent = `${Math.round(opacity * 100)}%`;
+    });
+  }
+
+  if (btnClearRef) {
+    btnClearRef.addEventListener('click', () => {
+      const layers = profileEditor.getLayers();
+      clearReferenceImage(layers.reference);
+      if (refImageControls) refImageControls.classList.add('hidden');
+      log('Reference image removed');
+    });
+  }
+}
+
+// ============================================================
 // Initialization
 // ============================================================
 
@@ -394,6 +510,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (profileEditor) {
     profileEditor.setToolsEnabled(false);
   }
+
+  // --- SVG import wiring ---
+  initSVGImport();
+
+  // --- Reference image wiring ---
+  initReferenceImage();
 
   // Initialize Three.js scene (immediate -- no async needed)
   preview3d.initScene(container);
