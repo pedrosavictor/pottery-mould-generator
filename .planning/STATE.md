@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core value:** Instant mould generation from a 2D profile -- a potter draws their pot shape, and the app generates all 3D-printable mould parts with zero CAD knowledge required.
-**Current focus:** Phase 11 COMPLETE -- Unblock Development (1/1 plans done). DEV_MODE enabled.
+**Current focus:** Phase 12 COMPLETE -- Critical Bug Fixes (6 bugs fixed in 4 commits).
 
 ## Current Position
 
-Phase: 11 of 11 (Unblock Development)
+Phase: 12 of 12 (Critical Bug Fixes)
 Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-11 -- Completed 11-01 (DEV_MODE flag bypasses all Pro/email/subscription gating)
+Last activity: 2026-02-11 -- Completed Phase 12 (FIX-09 through FIX-14)
 
-Progress: [██████████████████████████] 100% (26/26 plans)
+Progress: [███████████████████████████] 100% (27/27 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 26
+- Total plans completed: 27
 - Average duration: ~2.9 minutes
-- Total execution time: ~56.8 minutes
+- Total execution time: ~60.8 minutes
 
 **By Phase:**
 
@@ -38,10 +38,11 @@ Progress: [███████████████████████
 | 9. Branding + Polish | 3/3 | -- | -- |
 | 10. Console Bug Fixes | 1/1 | ~2m | ~2m |
 | 11. Unblock Development | 1/1 | ~2m | ~2m |
+| 12. Critical Bug Fixes | 1/1 | ~4m | ~4m |
 
 **Recent Trend:**
-- Last 5 plans: 09-02, 09-03, 10-01, 11-01 (~2m)
-- Trend: Stable at ~1.5-3m per plan
+- Last 5 plans: 09-03, 10-01, 11-01, 12-01 (~2-4m)
+- Trend: Stable at ~2-4m per plan
 
 *Updated after each plan completion*
 
@@ -127,6 +128,11 @@ Recent decisions affecting current work:
 - [10-01]: safeErrorMessage() helper centralizes WASM error extraction across all catch blocks
 - [10-01]: Scene init moved before parametric controls to prevent premature onProfileChange
 - [11-01]: DEV_MODE=true in authState.js bypasses all Pro/email/subscription gating for development
+- [12-01]: initPromise pattern guards against orphaned workers (not mutex)
+- [12-01]: Clamp shrinkageRate to [0, 0.99] in worker; UI slider max stays 20%
+- [12-01]: SVG import requires 3+ points, 5mm min height/width, finite coordinates
+- [12-01]: URL profile points clamped to [0, 500]mm; mould settings clamped to slider ranges
+- [12-01]: loadedFromURL flag reverses DOM sync direction for mould settings on share links
 
 ### Pending Todos
 
@@ -156,5 +162,5 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-02-11
-Stopped at: Completed 11-01 (Unblock Development). All 26 plans complete.
+Stopped at: Completed Phase 12 (Critical Bug Fixes). All 27 plans complete.
 Resume file: None
