@@ -112,7 +112,7 @@ function generateReadme({ partNames, mouldParams, volumes, resolution, includeSt
   text += '  5. Secure outer mould pieces with rubber bands or clamps\n';
   text += '  6. Seal seams with soft clay or petroleum jelly to prevent leaks\n';
   text += '  7. Mix plaster and water (quantities above) -- add plaster to water, stir gently\n';
-  text += '  8. Pour plaster through the pour hole in the ring\n';
+  text += '  8. Pour plaster into the cavity from the open top of the outer mould\n';
   text += '  9. Let set for 30-45 minutes before removing mould parts\n';
   text += ' 10. Allow plaster mould to dry for 24-48 hours before first use\n';
   text += '\n';
