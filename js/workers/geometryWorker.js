@@ -141,7 +141,10 @@ self.onmessage = async (e) => {
         const transferList = [];
         for (const partName of Object.keys(partsData)) {
           const part = partsData[partName];
-          transferList.push(part.vertices.buffer, part.normals.buffer, part.triangles.buffer);
+          // Only add ArrayBuffers for actual mesh data (skip error entries)
+          if (part.vertices) {
+            transferList.push(part.vertices.buffer, part.normals.buffer, part.triangles.buffer);
+          }
         }
 
         self.postMessage({ id, data: partsData }, transferList);
@@ -278,6 +281,56 @@ function toTransferableMesh(meshData) {
 }
 
 /**
+ * Extend the 2D profile with slip well geometry before revolving.
+ *
+ * The slip well is a rectangular extension at the top of the profile.
+ * When revolved, it creates a cylindrical reservoir for pouring liquid clay.
+ * When shelled, it becomes a hollow tube with uniform wall thickness.
+ *
+ * Profile extension (cross-section):
+ *   From the rim point, adds three points:
+ *     1. Outward by wallThickness (the well's outer wall base)
+ *     2. Up by wellHeight (the well's outer wall top)
+ *     3. Inward to rimRadius (the well's inner wall top -- becomes the opening)
+ *
+ *   Before:                    After:
+ *     rim (42, 97.7)            wellTop (42, 122.7)
+ *         |                          |
+ *      body curve               wellOuter (44.4, 122.7)
+ *         |                          |
+ *     foot                      wellBase (44.4, 97.7)
+ *                                    |
+ *                                rim (42, 97.7)
+ *                                    |
+ *                                 body curve
+ *                                    |
+ *                                foot
+ *
+ * The closing path (buildAndRevolve) goes from wellTop to axis at the same height,
+ * then down the axis. After shell(), the top face at wellTop height is removed,
+ * creating the slip well opening.
+ *
+ * @param {Array<ProfilePoint>} points - Shrinkage-scaled profile points.
+ * @param {number} wallThickness - Wall thickness in mm (same as shell thickness).
+ * @param {number} wellHeight - Height of the slip well in mm.
+ * @returns {Array<ProfilePoint>} Extended profile with slip well points appended.
+ */
+function extendProfileForSlipWell(points, wallThickness, wellHeight) {
+  if (wellHeight <= 0) return points;
+
+  const lastPt = points[points.length - 1];
+  const rimRadius = lastPt.x;
+  const rimY = lastPt.y;
+
+  return [
+    ...points,
+    { x: rimRadius + wallThickness, y: rimY, type: 'line' },
+    { x: rimRadius + wallThickness, y: rimY + wellHeight, type: 'line' },
+    { x: rimRadius, y: rimY + wellHeight, type: 'line' },
+  ];
+}
+
+/**
  * Generate mould parts (proof model + inner mould) from a profile.
  *
  * The proof model is the original profile revolved at fired dimensions.
@@ -306,22 +359,42 @@ function generateMouldParts(profilePoints, mouldParams) {
     const proofShape = track(buildAndRevolve(profilePoints));
     results.proof = toTransferableMesh(proofShape.mesh(meshOpts));
 
-    // Inner mould: shrinkage-scaled profile, revolved, then shelled
+    // Inner mould: shrinkage-scaled profile, with optional slip well, revolved, then shelled
     const scaledPoints = scaleProfileForShrinkage(profilePoints, shrinkageRate);
-    const mouldSolid = track(buildAndRevolve(scaledPoints));
 
-    // Top Z coordinate = rim height of scaled profile.
+    // Add slip well geometry to profile (if requested)
+    const wellHeights = { none: 0, regular: 25, tall: 50 };
+    const wellHeight = wellHeights[slipWellType] || 0;
+    const mouldProfile = wellHeight > 0
+      ? extendProfileForSlipWell(scaledPoints, wallThickness, wellHeight)
+      : scaledPoints;
+
+    // Revolve the (possibly extended) profile
+    const mouldSolid = track(buildAndRevolve(mouldProfile));
+
+    // Top Z coordinate = last point's Y of the mould profile.
+    // When slip well is present, this is the well top; otherwise it's the rim.
     // Since the worker revolves on the XZ plane around the Z axis,
     // the profile's Y coordinate maps to the 3D Z axis.
-    // The last point's Y (after scaling) is the rim height.
-    const topZ = scaledPoints[scaledPoints.length - 1].y;
+    const topZ = mouldProfile[mouldProfile.length - 1].y;
 
     // Shell with NEGATIVE thickness: wall grows OUTWARD from pot surface.
-    // FaceFinder.inPlane("XY", topZ) selects the flat top face (rim plane)
+    // FaceFinder.inPlane("XY", topZ) selects the flat top face (rim/well top plane)
     // to leave open, creating the mould opening.
-    const shelledMould = track(
-      mouldSolid.shell(-wallThickness, (f) => f.inPlane('XY', topZ))
-    );
+    let shelledMould;
+    try {
+      shelledMould = track(
+        mouldSolid.shell(-wallThickness, (f) => f.inPlane('XY', topZ))
+      );
+    } catch (shellErr) {
+      // Shell failed -- return an error indicator alongside the proof model
+      // so the app can show a meaningful error instead of crashing
+      console.warn('[worker] Shell operation failed:', shellErr.message);
+      results['inner-mould-error'] = {
+        message: `Shell operation failed: ${shellErr.message}. Try reducing wall thickness or simplifying the profile.`,
+      };
+      return results; // Returns proof but no inner-mould mesh
+    }
     results['inner-mould'] = toTransferableMesh(shelledMould.mesh(meshOpts));
 
     return results;
